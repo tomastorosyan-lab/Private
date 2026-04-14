@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 15, 23, 42;
+  --muted-rgb: 71, 85, 105;
+  --background-page: 248, 250, 252;
+}
+
+@layer base {
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    color: rgb(var(--foreground-rgb));
+    @apply text-[15px] leading-relaxed antialiased;
+  }
+
+  @media (min-width: 640px) {
+    body {
+      @apply text-base;
+    }
+  }
+}
+
+/* B2B shell: neutral base, soft cool highlight (readable, not decorative) */
+.app-shell {
+  background-color: rgb(var(--background-page));
+  background-image:
+    radial-gradient(
+      ellipse 100% 60% at 50% -15%,
+      rgb(59 130 246 / 0.08),
+      transparent 55%
+    ),
+    radial-gradient(
+      ellipse 70% 45% at 100% 0%,
+      rgb(148 163 184 / 0.12),
+      transparent 50%
+    );
+  min-height: 100vh;
+}
+
+.surface-card {
+  @apply rounded-xl border border-slate-200/90 bg-white/95 shadow-surface backdrop-blur-[2px];
+}
+
+.surface-card-hover {
+  @apply rounded-xl border border-slate-200/90 bg-white/95 shadow-surface backdrop-blur-[2px] transition-shadow duration-200 hover:shadow-surface-md hover:border-slate-300/90;
+}
+
+/* Legacy alias: old notebook grid replaced by app shell */
+.notebook-grid {
+  @apply app-shell;
+}

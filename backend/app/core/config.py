@@ -1,0 +1,49 @@
+"""
+Конфигурация приложения
+"""
+try:
+    from pydantic_settings import BaseSettings
+except ImportError:
+    # Для совместимости со старыми версиями
+    from pydantic import BaseSettings
+from typing import List, Optional
+
+
+class Settings(BaseSettings):
+    # Основные настройки
+    PROJECT_NAME: str = "DIS"
+    VERSION: str = "1.0.0"
+    API_V1_PREFIX: str = "/api/v1"
+    
+    # База данных
+    DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/dis_db"
+    
+    # JWT
+    SECRET_KEY: str = "your-secret-key-change-in-production"
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    
+    # CORS (127.0.0.1 и localhost — разные Origin в браузере)
+    CORS_ORIGINS: List[str] = [
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://localhost:8080",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001",
+        "http://127.0.0.1:8080",
+    ]
+    # Для Cloudflare Quick Tunnel (trycloudflare.com), если Origin меняется при каждом запуске
+    CORS_ORIGIN_REGEX: Optional[str] = None
+    
+    # Настройки загрузки файлов
+    UPLOAD_DIR: str = "uploads"
+    MAX_UPLOAD_SIZE: int = 5 * 1024 * 1024  # 5MB
+    ALLOWED_IMAGE_TYPES: List[str] = ["image/jpeg", "image/png", "image/gif", "image/webp"]
+    
+    class Config:
+        env_file = ".env"
+        case_sensitive = True
+
+
+settings = Settings()
+

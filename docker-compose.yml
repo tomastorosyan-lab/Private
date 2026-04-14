@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  # PostgreSQL база данных
+  db:
+    image: postgres:15-alpine
+    container_name: dis_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: dis_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: dis_backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/dis_db
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+
+  # Frontend (production standalone из Dockerfile; без mount — иначе затирается server.js)
+  # По умолчанию SAME_ORIGIN — браузер бьёт в /api/v1 того же хоста, Next проксирует в backend (и с IP, и с туннеля).
+  # Только если очень нужен прямой URL к API: NEXT_PUBLIC_API_URL=http://<хост>:8000 при сборке.
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-SAME_ORIGIN}
+        INTERNAL_API_ORIGIN: http://backend:8000
+    container_name: dis_frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+  # Nginx: один порт 8080 → фронт :3000 + API :8000 (для доступа из интернета через туннель)
+  gateway:
+    profiles:
+      - tunnel
+    image: nginx:alpine
+    container_name: dis_gateway
+    network_mode: host
+    volumes:
+      - ./nginx/gateway.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - backend
+
+volumes:
+  postgres_data:
+
+
+
+
