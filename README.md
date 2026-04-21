@@ -65,6 +65,18 @@ docker compose -f docker-compose.prod.yml up -d --build
 docker compose -f docker-compose.prod.yml exec backend alembic upgrade head
 ```
 
+### Автодеплой (GitHub Actions)
+
+В репозитории есть workflow: `.github/workflows/deploy-prod.yml`.
+Он запускается при `push` в `main` и выполняет на сервере `/opt/dis/scripts/deploy-prod.sh`.
+
+Нужно добавить GitHub Secrets в репозитории:
+
+- `SSH_HOST` (например `178.212.12.157`)
+- `SSH_PORT` (обычно `22`)
+- `SSH_USER` (например `root`)
+- `SSH_PRIVATE_KEY` (приватный ключ для входа на сервер)
+
 ## Разработка без Docker
 
 **Backend:** `cd backend && python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt` — задайте `DATABASE_URL`, затем `uvicorn app.main:app --reload`.
