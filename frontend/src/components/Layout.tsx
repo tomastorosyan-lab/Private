@@ -310,7 +310,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   </Link>
                   <button
                     onClick={handleLogout}
-                    className="rounded-lg bg-primary-dark px-2 py-2 text-xs font-medium text-white hover:bg-primary sm:px-4 sm:text-sm"
+                    className="rounded-lg bg-rose-800/90 px-2 py-2 text-xs font-medium text-white shadow-sm ring-1 ring-rose-900/20 hover:bg-rose-800 sm:px-4 sm:text-sm"
                   >
                     <span className="hidden sm:inline">Выйти</span>
                     <span className="sm:hidden">✕</span>
@@ -437,7 +437,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                         handleLogout();
                         setMobileMenuOpen(false);
                       }}
-                      className="block w-full rounded-lg bg-primary-dark px-3 py-2 text-left text-base font-medium text-white hover:bg-primary"
+                      className="block w-full rounded-lg bg-rose-800/90 px-3 py-2 text-left text-base font-medium text-white shadow-sm ring-1 ring-rose-900/20 hover:bg-rose-800"
                     >
                       Выйти
                     </button>
