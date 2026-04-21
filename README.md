@@ -70,10 +70,12 @@ docker compose -f docker-compose.prod.yml up -d --build
 docker compose -f docker-compose.prod.yml exec backend alembic upgrade head
 ```
 
-### Автодеплой (GitHub Actions)
+### Деплой на production (GitHub Actions, только вручную)
 
 В репозитории есть workflow: `.github/workflows/deploy-prod.yml`.
-Он запускается при `push` в `main` и выполняет на сервере `/opt/dis/scripts/deploy-prod.sh`.
+Он **не запускается автоматически** на `push` — только когда вы вручную нажимаете **Run workflow** в GitHub Actions.
+
+После запуска workflow выполняет на сервере `/opt/dis/scripts/deploy-prod.sh`.
 
 Нужно добавить GitHub Secrets в репозитории:
 
