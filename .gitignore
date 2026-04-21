@@ -48,6 +48,9 @@ uploads/
 # Docker
 docker-compose.override.yml
 
+# Local Compose v2 standalone binary (downloaded by scripts/install-compose-v2.sh)
+bin/docker-compose
+
 # Локальный файл со ссылкой trycloudflare (генерирует scripts/dis-online-launch.sh)
 DIS-ссылка.txt
 

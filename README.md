@@ -20,7 +20,12 @@
 
 2. Поднимите сервисы:
    ```bash
-   docker-compose up -d
+   # Рекомендуется Docker Compose v2.
+   # Если у вас нет `docker compose`, а старый `docker-compose` падает с ошибкой `KeyError: 'ContainerConfig'`
+   # на новых версиях Docker Engine — установите compose v2 в ./bin одной командой:
+   bash scripts/install-compose-v2.sh
+
+   ./bin/docker-compose up -d --build
    ```
 
 3. Миграции БД:
