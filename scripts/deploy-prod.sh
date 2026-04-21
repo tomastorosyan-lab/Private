@@ -20,13 +20,23 @@ docker compose -f docker-compose.prod.yml exec -T backend alembic upgrade head
 
 echo "[deploy] Health check (backend container)"
 # Prefer checking the API directly inside the backend container (avoids nginx/cache/SSL edge cases).
-if docker compose -f docker-compose.prod.yml exec -T backend sh -lc 'command -v curl >/dev/null 2>&1'; then
-  docker compose -f docker-compose.prod.yml exec -T backend sh -lc 'curl -fsS http://127.0.0.1:8000/health >/dev/null'
-elif docker compose -f docker-compose.prod.yml exec -T backend sh -lc 'command -v wget >/dev/null 2>&1'; then
-  docker compose -f docker-compose.prod.yml exec -T backend sh -lc 'wget -qO- http://127.0.0.1:8000/health >/dev/null'
-else
-  echo "[deploy] WARN: curl/wget not found in backend image; falling back to public URL check"
-  curl -fsS https://abkhazhub.ru/health >/dev/null
-fi
+docker compose -f docker-compose.prod.yml exec -T backend python - <<'PY'
+import json
+import urllib.error
+import urllib.request
+
+url = "http://127.0.0.1:8000/health"
+try:
+    with urllib.request.urlopen(url, timeout=10) as resp:
+        body = resp.read().decode("utf-8", errors="replace")
+        if resp.status != 200:
+            raise SystemExit(f"health check failed: HTTP {resp.status}")
+        data = json.loads(body)
+        status = str(data.get("status", "")).lower()
+        if status not in {"healthy", "ok"}:
+            raise SystemExit(f"health check failed: unexpected payload: {data!r}")
+except urllib.error.URLError as e:
+    raise SystemExit(f"health check failed: {e}") from e
+PY
 
 echo "[deploy] Done"
