@@ -21,7 +21,8 @@ docker compose -f docker-compose.prod.yml exec -T backend alembic upgrade head
 echo "[deploy] Health check (backend container)"
 # Prefer checking the API directly inside the backend container (avoids nginx/cache/SSL edge cases).
 for attempt in $(seq 1 20); do
-  if docker compose -f docker-compose.prod.yml exec -T backend python - <<'PY'
+  set +e
+  docker compose -f docker-compose.prod.yml exec -T backend python - <<'PY'
 import json
 import urllib.error
 import urllib.request
@@ -39,7 +40,9 @@ try:
 except urllib.error.URLError as e:
     raise SystemExit(f"health check failed: {e}") from e
 PY
-  then
+  rc=$?
+  set -e
+  if [ "$rc" -eq 0 ]; then
     echo "[deploy] Health check passed on attempt ${attempt}"
     break
   fi
