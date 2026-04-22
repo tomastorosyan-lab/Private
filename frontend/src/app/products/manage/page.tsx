@@ -120,6 +120,13 @@ export default function ManageProductsPage() {
     };
   };
 
+  const centerCrop = (draft: CropDraft): CropDraft => {
+    const centeredX = (CROP_FRAME_SIZE - draft.imageEl.naturalWidth * draft.scale) / 2;
+    const centeredY = (CROP_FRAME_SIZE - draft.imageEl.naturalHeight * draft.scale) / 2;
+    const clamped = clampCropPosition(centeredX, centeredY, draft.scale, draft.imageEl);
+    return { ...draft, x: clamped.x, y: clamped.y };
+  };
+
   const openCropForImage = (file: File) => {
     const reader = new FileReader();
     reader.onload = () => {
@@ -132,7 +139,7 @@ export default function ManageProductsPage() {
         );
         const x = (CROP_FRAME_SIZE - img.naturalWidth * minScale) / 2;
         const y = (CROP_FRAME_SIZE - img.naturalHeight * minScale) / 2;
-        setCropDraft({
+        setCropDraft(centerCrop({
           fileName: file.name,
           src,
           imageEl: img,
@@ -140,7 +147,7 @@ export default function ManageProductsPage() {
           minScale,
           x,
           y,
-        });
+        }));
       };
       img.onerror = () => setError('Не удалось загрузить изображение для кадрирования');
       img.src = src;
@@ -296,6 +303,7 @@ export default function ManageProductsPage() {
     setServerImagePath(null);
     setProductImage(null);
     setImagePreview(null);
+    setCropDraft(null);
   };
 
   const openCreate = () => {
@@ -307,6 +315,7 @@ export default function ManageProductsPage() {
     setServerImagePath(null);
     setProductImage(null);
     setImagePreview(null);
+    setCropDraft(null);
   };
 
   /**
@@ -321,6 +330,7 @@ export default function ManageProductsPage() {
     setServerImagePath(null);
     setProductImage(null);
     setImagePreview(null);
+    setCropDraft(null);
     setOpeningEditor(true);
     try {
       const [p, invListRaw] = await Promise.all([
@@ -794,6 +804,13 @@ export default function ManageProductsPage() {
                   />
                 </div>
                 <div className="mt-4 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCropDraft((prev) => (prev ? centerCrop(prev) : prev))}
+                    className="rounded-md border border-primary/30 px-3 py-2 text-sm text-primary hover:bg-primary-light/40"
+                  >
+                    Центрировать
+                  </button>
                   <button
                     type="button"
                     onClick={() => setCropDraft(null)}
