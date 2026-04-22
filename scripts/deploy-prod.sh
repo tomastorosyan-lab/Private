@@ -3,6 +3,9 @@ set -euo pipefail
 
 APP_DIR="/opt/dis"
 BRANCH="${1:-main}"
+COMPOSE_FILE="docker-compose.prod.yml"
+BACKUP_DIR="${APP_DIR}/backups"
+TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
 
 echo "[deploy] Start deploy branch: ${BRANCH}"
 cd "${APP_DIR}"
@@ -12,17 +15,36 @@ git fetch origin "${BRANCH}"
 git checkout "${BRANCH}"
 git pull --ff-only origin "${BRANCH}"
 
+echo "[deploy] Create pre-deploy backups"
+mkdir -p "${BACKUP_DIR}"
+
+# Backup PostgreSQL before any container recreation.
+docker compose -f "${COMPOSE_FILE}" exec -T db pg_dump -U postgres -d dis_db > "${BACKUP_DIR}/db-${TIMESTAMP}.sql"
+echo "[deploy] DB backup saved: ${BACKUP_DIR}/db-${TIMESTAMP}.sql"
+
+# Backup uploaded media files so accidental volume issues are recoverable.
+docker compose -f "${COMPOSE_FILE}" exec -T backend sh -lc 'cd /app && tar -czf - uploads' > "${BACKUP_DIR}/uploads-${TIMESTAMP}.tgz"
+echo "[deploy] Uploads backup saved: ${BACKUP_DIR}/uploads-${TIMESTAMP}.tgz"
+
+# Keep rolling backups for 14 days.
+find "${BACKUP_DIR}" -type f -mtime +14 -delete
+
 echo "[deploy] Build and restart containers"
-docker compose -f docker-compose.prod.yml up -d --build
+docker compose -f "${COMPOSE_FILE}" up -d --build
 
 echo "[deploy] Run DB migrations"
-docker compose -f docker-compose.prod.yml exec -T backend alembic upgrade head
+docker compose -f "${COMPOSE_FILE}" exec -T backend alembic upgrade head
+
+echo "[deploy] Verify persistent mounts"
+docker inspect dis_db --format '{{range .Mounts}}{{println .Destination}}{{end}}' | grep -q '/var/lib/postgresql/data'
+docker inspect dis_backend --format '{{range .Mounts}}{{println .Destination}}{{end}}' | grep -q '/app/uploads'
+echo "[deploy] Persistent mounts are configured"
 
 echo "[deploy] Health check (backend container)"
 # Prefer checking the API directly inside the backend container (avoids nginx/cache/SSL edge cases).
 for attempt in $(seq 1 20); do
   set +e
-  docker compose -f docker-compose.prod.yml exec -T backend python - <<'PY'
+  docker compose -f "${COMPOSE_FILE}" exec -T backend python - <<'PY'
 import json
 import urllib.error
 import urllib.request
