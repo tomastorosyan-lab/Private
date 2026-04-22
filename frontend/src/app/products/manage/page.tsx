@@ -1,12 +1,24 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { getPublicApiBase } from '@/lib/publicBase';
 import { authService } from '@/lib/auth';
 import Link from 'next/link';
-import { compressImage } from '@/lib/utils';
+const CROP_FRAME_SIZE = 320;
+const STANDARD_IMAGE_SIZE = 1024;
+const STANDARD_IMAGE_TYPE = 'image/jpeg';
+
+interface CropDraft {
+  fileName: string;
+  src: string;
+  imageEl: HTMLImageElement;
+  scale: number;
+  minScale: number;
+  x: number;
+  y: number;
+}
 
 interface Product {
   id: number;
@@ -86,8 +98,102 @@ export default function ManageProductsPage() {
   const [productImage, setProductImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [openingEditor, setOpeningEditor] = useState(false);
+  const [cropDraft, setCropDraft] = useState<CropDraft | null>(null);
+  const [draggingCrop, setDraggingCrop] = useState(false);
+  const dragStateRef = useRef<{ startX: number; startY: number; originX: number; originY: number } | null>(null);
 
   const [categories, setCategories] = useState<string[]>([]);
+
+  const clampCropPosition = (
+    x: number,
+    y: number,
+    scale: number,
+    image: HTMLImageElement
+  ) => {
+    const displayedW = image.naturalWidth * scale;
+    const displayedH = image.naturalHeight * scale;
+    const minX = CROP_FRAME_SIZE - displayedW;
+    const minY = CROP_FRAME_SIZE - displayedH;
+    return {
+      x: Math.min(0, Math.max(minX, x)),
+      y: Math.min(0, Math.max(minY, y)),
+    };
+  };
+
+  const openCropForImage = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const src = String(reader.result || '');
+      const img = new Image();
+      img.onload = () => {
+        const minScale = Math.max(
+          CROP_FRAME_SIZE / img.naturalWidth,
+          CROP_FRAME_SIZE / img.naturalHeight
+        );
+        const x = (CROP_FRAME_SIZE - img.naturalWidth * minScale) / 2;
+        const y = (CROP_FRAME_SIZE - img.naturalHeight * minScale) / 2;
+        setCropDraft({
+          fileName: file.name,
+          src,
+          imageEl: img,
+          scale: minScale,
+          minScale,
+          x,
+          y,
+        });
+      };
+      img.onerror = () => setError('Не удалось загрузить изображение для кадрирования');
+      img.src = src;
+    };
+    reader.onerror = () => setError('Не удалось прочитать файл изображения');
+    reader.readAsDataURL(file);
+  };
+
+  const applyCrop = async () => {
+    if (!cropDraft) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = STANDARD_IMAGE_SIZE;
+    canvas.height = STANDARD_IMAGE_SIZE;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      setError('Не удалось подготовить изображение');
+      return;
+    }
+
+    const sx = (0 - cropDraft.x) / cropDraft.scale;
+    const sy = (0 - cropDraft.y) / cropDraft.scale;
+    const sw = CROP_FRAME_SIZE / cropDraft.scale;
+    const sh = CROP_FRAME_SIZE / cropDraft.scale;
+
+    ctx.drawImage(
+      cropDraft.imageEl,
+      sx,
+      sy,
+      sw,
+      sh,
+      0,
+      0,
+      STANDARD_IMAGE_SIZE,
+      STANDARD_IMAGE_SIZE
+    );
+
+    const blob: Blob | null = await new Promise((resolve) =>
+      canvas.toBlob(resolve, STANDARD_IMAGE_TYPE, 0.9)
+    );
+    if (!blob) {
+      setError('Не удалось сохранить обработанное изображение');
+      return;
+    }
+
+    const normalizedName = cropDraft.fileName.replace(/\.[^.]+$/, '') + '.jpg';
+    const normalized = new File([blob], normalizedName, {
+      type: STANDARD_IMAGE_TYPE,
+      lastModified: Date.now(),
+    });
+    setProductImage(normalized);
+    setImagePreview(URL.createObjectURL(normalized));
+    setCropDraft(null);
+  };
 
   const notifyCatalogRefresh = () => {
     if (typeof window !== 'undefined') {
@@ -281,8 +387,7 @@ export default function ManageProductsPage() {
 
       const created = await api.createProduct(body);
       if (productImage) {
-        const img = await compressImage(productImage, 128);
-        await api.uploadProductImage(created.id, img);
+        await api.uploadProductImage(created.id, productImage);
       }
       setSuccess('Товар создан');
       closeForm();
@@ -371,8 +476,7 @@ export default function ManageProductsPage() {
       );
 
       if (productImage) {
-        const img = await compressImage(productImage, 128);
-        await api.uploadProductImage(editingId, img);
+        await api.uploadProductImage(editingId, productImage);
       }
 
       setSuccess('Изменения сохранены');
@@ -560,24 +664,18 @@ export default function ManageProductsPage() {
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={async (e) => {
+                  onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (!file) return;
-                    try {
-                      const compressed = await compressImage(file, 128);
-                      setProductImage(compressed);
-                      const reader = new FileReader();
-                      reader.onloadend = () => setImagePreview(reader.result as string);
-                      reader.readAsDataURL(compressed);
-                    } catch {
-                      setProductImage(file);
-                      const reader = new FileReader();
-                      reader.onloadend = () => setImagePreview(reader.result as string);
-                      reader.readAsDataURL(file);
-                    }
+                    setError('');
+                    openCropForImage(file);
+                    e.target.value = '';
                   }}
                   className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary-light file:text-primary-dark"
                 />
+                <p className="mt-1 text-xs text-gray-500">
+                  После выбора откроется окно кадрирования. Итоговый формат: квадрат 1024x1024 JPG.
+                </p>
                 {formMode === 'edit' && serverImagePath && !productImage && editingId != null && (
                   <button
                     type="button"
@@ -616,6 +714,103 @@ export default function ManageProductsPage() {
                 </button>
               </div>
             </form>
+          )}
+          {cropDraft && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+              <div className="w-full max-w-md rounded-lg bg-white p-4 shadow-xl">
+                <h3 className="text-base font-semibold text-gray-900">Кадрирование изображения</h3>
+                <p className="mt-1 text-xs text-gray-500">
+                  Перемещайте изображение внутри рамки и отрегулируйте масштаб.
+                </p>
+                <div
+                  className="relative mt-4 mx-auto h-80 w-80 overflow-hidden rounded-lg border border-gray-300 bg-gray-100 select-none touch-none"
+                  onMouseDown={(e) => {
+                    dragStateRef.current = {
+                      startX: e.clientX,
+                      startY: e.clientY,
+                      originX: cropDraft.x,
+                      originY: cropDraft.y,
+                    };
+                    setDraggingCrop(true);
+                  }}
+                  onMouseMove={(e) => {
+                    if (!draggingCrop || !dragStateRef.current) return;
+                    const dx = e.clientX - dragStateRef.current.startX;
+                    const dy = e.clientY - dragStateRef.current.startY;
+                    const next = clampCropPosition(
+                      dragStateRef.current.originX + dx,
+                      dragStateRef.current.originY + dy,
+                      cropDraft.scale,
+                      cropDraft.imageEl
+                    );
+                    setCropDraft((prev) => (prev ? { ...prev, x: next.x, y: next.y } : prev));
+                  }}
+                  onMouseUp={() => {
+                    setDraggingCrop(false);
+                    dragStateRef.current = null;
+                  }}
+                  onMouseLeave={() => {
+                    setDraggingCrop(false);
+                    dragStateRef.current = null;
+                  }}
+                >
+                  <img
+                    src={cropDraft.src}
+                    alt="crop preview"
+                    draggable={false}
+                    className="pointer-events-none absolute max-w-none"
+                    style={{
+                      width: `${cropDraft.imageEl.naturalWidth * cropDraft.scale}px`,
+                      height: `${cropDraft.imageEl.naturalHeight * cropDraft.scale}px`,
+                      left: `${cropDraft.x}px`,
+                      top: `${cropDraft.y}px`,
+                    }}
+                  />
+                  <div className="pointer-events-none absolute inset-0 border-2 border-primary/70" />
+                </div>
+                <div className="mt-4">
+                  <label className="block text-xs text-gray-600 mb-1">Масштаб</label>
+                  <input
+                    type="range"
+                    min={cropDraft.minScale}
+                    max={Math.max(cropDraft.minScale * 3, cropDraft.minScale + 0.1)}
+                    step={0.01}
+                    value={cropDraft.scale}
+                    onChange={(e) => {
+                      const nextScale = Number(e.target.value);
+                      setCropDraft((prev) => {
+                        if (!prev) return prev;
+                        const centerX = CROP_FRAME_SIZE / 2;
+                        const centerY = CROP_FRAME_SIZE / 2;
+                        const imageX = (centerX - prev.x) / prev.scale;
+                        const imageY = (centerY - prev.y) / prev.scale;
+                        const nextX = centerX - imageX * nextScale;
+                        const nextY = centerY - imageY * nextScale;
+                        const clamped = clampCropPosition(nextX, nextY, nextScale, prev.imageEl);
+                        return { ...prev, scale: nextScale, x: clamped.x, y: clamped.y };
+                      });
+                    }}
+                    className="w-full"
+                  />
+                </div>
+                <div className="mt-4 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCropDraft(null)}
+                    className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    Отмена
+                  </button>
+                  <button
+                    type="button"
+                    onClick={applyCrop}
+                    className="rounded-md bg-primary px-3 py-2 text-sm text-white hover:bg-primary-dark"
+                  >
+                    Применить
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       )}

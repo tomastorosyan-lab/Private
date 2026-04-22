@@ -3,9 +3,15 @@
 """
 import os
 import uuid
+from io import BytesIO
 from pathlib import Path
 from fastapi import UploadFile, HTTPException, status
+from PIL import Image, ImageOps
 from app.core.config import settings
+
+STANDARD_IMAGE_SIZE = 1024
+STANDARD_IMAGE_FORMAT = "JPEG"
+STANDARD_IMAGE_QUALITY = 88
 
 
 def get_upload_dir() -> Path:
@@ -50,20 +56,38 @@ async def save_uploaded_file(file: UploadFile, user_id: int) -> str:
             detail=f"Файл слишком большой. Максимальный размер: {settings.MAX_UPLOAD_SIZE / 1024 / 1024}MB"
         )
     
-    # Определяем расширение файла
-    file_extension = Path(file.filename).suffix if file.filename else ".jpg"
-    if not file_extension:
-        # Определяем по content_type
-        content_type_to_ext = {
-            "image/jpeg": ".jpg",
-            "image/png": ".png",
-            "image/gif": ".gif",
-            "image/webp": ".webp",
-        }
-        file_extension = content_type_to_ext.get(file.content_type, ".jpg")
+    # Приводим любое изображение к единому стандарту:
+    # квадрат 1024x1024, JPEG.
+    try:
+        img = Image.open(BytesIO(contents))
+        img = ImageOps.exif_transpose(img)
+        if img.mode not in ("RGB",):
+            img = img.convert("RGB")
+
+        width, height = img.size
+        side = min(width, height)
+        left = (width - side) // 2
+        top = (height - side) // 2
+        img = img.crop((left, top, left + side, top + side))
+        img = img.resize((STANDARD_IMAGE_SIZE, STANDARD_IMAGE_SIZE), Image.Resampling.LANCZOS)
+
+        out = BytesIO()
+        img.save(out, format=STANDARD_IMAGE_FORMAT, quality=STANDARD_IMAGE_QUALITY, optimize=True)
+        processed = out.getvalue()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Не удалось обработать изображение"
+        ) from exc
+    
+    if len(processed) > settings.MAX_UPLOAD_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Изображение после обработки слишком большое. Максимальный размер: {settings.MAX_UPLOAD_SIZE / 1024 / 1024}MB"
+        )
     
     # Генерируем уникальное имя файла
-    filename = f"{user_id}_{uuid.uuid4().hex}{file_extension}"
+    filename = f"{user_id}_{uuid.uuid4().hex}.jpg"
     
     # Создаем директорию для пользователя
     upload_dir = get_upload_dir()
@@ -73,7 +97,7 @@ async def save_uploaded_file(file: UploadFile, user_id: int) -> str:
     # Сохраняем файл
     file_path = user_dir / filename
     with open(file_path, "wb") as f:
-        f.write(contents)
+        f.write(processed)
     
     # Возвращаем относительный URL
     return f"/uploads/{user_id}/{filename}"
