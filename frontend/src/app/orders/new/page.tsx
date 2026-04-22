@@ -245,6 +245,14 @@ export default function NewOrderPage() {
     }
   };
 
+  const clearCart = () => {
+    setCart([]);
+    localStorage.removeItem('cart');
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('cart-updated'));
+    }
+  };
+
   const updateCartQuantity = (productId: number, quantity: number) => {
     if (quantity <= 0) {
       removeFromCart(productId);
@@ -390,9 +398,20 @@ export default function NewOrderPage() {
 
       {/* Корзина - показываем всегда, чтобы было видно */}
       <div className="bg-white shadow-lg rounded-lg p-4 sm:p-6" style={{ minHeight: '200px' }}>
-        <h2 className="text-lg sm:text-xl font-semibold mb-4 text-primary-dark">
-          🛒 Корзина {cart.length > 0 && `(${cart.length} ${cart.length === 1 ? 'товар' : cart.length < 5 ? 'товара' : 'товаров'})`}
-        </h2>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 className="text-lg sm:text-xl font-semibold text-primary-dark">
+            🛒 Корзина {cart.length > 0 && `(${cart.length} ${cart.length === 1 ? 'товар' : cart.length < 5 ? 'товара' : 'товаров'})`}
+          </h2>
+          {cart.length > 0 && (
+            <button
+              type="button"
+              onClick={clearCart}
+              className="rounded-md bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              Очистить корзину
+            </button>
+          )}
+        </div>
         {cart.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
             <p className="text-lg mb-2">Корзина пуста</p>

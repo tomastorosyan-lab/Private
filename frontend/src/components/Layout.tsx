@@ -13,6 +13,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [cartCount, setCartCount] = useState(0);
   const [cartTotal, setCartTotal] = useState(0);
+  const [favoritesCount, setFavoritesCount] = useState(0);
   const [pendingIncomingCount, setPendingIncomingCount] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -91,13 +92,37 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       }
     };
 
+    const updateFavoritesCount = () => {
+      if (typeof window !== 'undefined') {
+        const savedFavorites = localStorage.getItem('favorite_products');
+        if (savedFavorites) {
+          try {
+            const favoriteData = JSON.parse(savedFavorites);
+            if (Array.isArray(favoriteData)) {
+              setFavoritesCount(favoriteData.length);
+            } else {
+              setFavoritesCount(0);
+            }
+          } catch {
+            setFavoritesCount(0);
+          }
+        } else {
+          setFavoritesCount(0);
+        }
+      }
+    };
+
     // Обновляем количество товаров в корзине
     updateCartCount();
+    updateFavoritesCount();
 
     // Слушаем изменения в localStorage (для обновления корзины)
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'cart') {
         updateCartCount();
+      }
+      if (e.key === 'favorite_products') {
+        updateFavoritesCount();
       }
     };
 
@@ -105,18 +130,25 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     const handleCartUpdate = () => {
       updateCartCount();
     };
+    const handleFavoritesUpdate = () => {
+      updateFavoritesCount();
+    };
 
     window.addEventListener('storage', handleStorageChange);
     window.addEventListener('cart-updated', handleCartUpdate);
+    window.addEventListener('favorites-updated', handleFavoritesUpdate);
 
     // Периодически проверяем корзину (на случай, если изменения происходят в том же окне)
     const cartInterval = setInterval(updateCartCount, 1000);
+    const favoritesInterval = setInterval(updateFavoritesCount, 1000);
 
     return () => {
       window.removeEventListener('auth-state-changed', handleAuthChange);
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('cart-updated', handleCartUpdate);
+      window.removeEventListener('favorites-updated', handleFavoritesUpdate);
       clearInterval(cartInterval);
+      clearInterval(favoritesInterval);
     };
   }, [pathname]); // Обновляем при изменении пути
 
@@ -287,6 +319,23 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                         Поставщики
                       </Link>
                     )}
+                    {user.user_type === 'customer' && (
+                      <Link
+                        href="/favorites"
+                        className={`inline-flex items-center gap-1 border-b-2 px-1 pt-1 text-sm font-medium transition-colors ${
+                          isActive('/favorites')
+                            ? 'border-primary text-primary-dark'
+                            : 'border-transparent text-slate-700 hover:border-primary/40 hover:text-primary'
+                        }`}
+                      >
+                        <span>Избранное</span>
+                        {favoritesCount > 0 && (
+                          <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-rose-100 px-1.5 py-0.5 text-xs font-semibold tabular-nums text-rose-900">
+                            {favoritesCount}
+                          </span>
+                        )}
+                      </Link>
+                    )}
                   </>
                 )}
               </div>
@@ -413,6 +462,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     </Link>
                     {user.user_type === 'customer' && (
                       <>
+                        <Link
+                          href="/favorites"
+                          className={`block rounded-lg px-3 py-2 text-base font-medium transition-colors ${
+                            isActive('/favorites')
+                              ? 'bg-primary-light text-primary-dark'
+                              : 'text-slate-800 hover:bg-slate-50 hover:text-primary'
+                          }`}
+                          onClick={() => setMobileMenuOpen(false)}
+                        >
+                          ⚑ Избранное {favoritesCount > 0 && `(${favoritesCount})`}
+                        </Link>
                         <Link
                           href="/orders/new"
                           className={`block rounded-lg px-3 py-2 text-base font-medium transition-colors ${

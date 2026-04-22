@@ -47,11 +47,13 @@ export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [inventory, setInventory] = useState<Inventory[]>([]);
+  const [productPopularity, setProductPopularity] = useState<Record<number, number>>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [productQuantities, setProductQuantities] = useState<Record<number, number>>({});
+  const [favoriteProductIds, setFavoriteProductIds] = useState<number[]>([]);
   const [selectedSupplierId, setSelectedSupplierId] = useState<number | null>(null);
   const [selectedProductForDescription, setSelectedProductForDescription] = useState<Product | null>(null);
   
@@ -63,7 +65,7 @@ export default function ProductsPage() {
   const [maxPrice, setMaxPrice] = useState<string>('');
   
   // Сортировка
-  const [sortBy, setSortBy] = useState<string>('name'); // 'name', 'price_asc', 'price_desc', 'quantity_asc', 'quantity_desc'
+  const [sortBy, setSortBy] = useState<string>('name'); // 'name', 'price_asc', 'price_desc', 'quantity_asc', 'quantity_desc', 'popularity_desc'
 
   // Отслеживаем предыдущий supplier_id из URL для сброса фильтров
   const prevSupplierIdRef = useRef<string | null>(null);
@@ -89,14 +91,27 @@ export default function ProductsPage() {
       const supplierIdParam = searchParams.get('supplier_id');
       const supplierId = supplierIdParam ? Number(supplierIdParam) : undefined;
 
-      const [productsData, suppliersData, categoriesData] = await Promise.all([
+      const [productsData, suppliersData, categoriesData, ordersData] = await Promise.all([
         api.getProducts({ limit: 1000, supplier_id: supplierId }),
         api.getDistributors({ limit: 100 }),
         api.getCategories().catch(() => ({ categories: [] })),
+        api.getOrders({ limit: 1000 }).catch(() => []),
       ]);
       setProducts(productsData);
       setSuppliers(suppliersData);
       setCategories(categoriesData.categories || []);
+
+      const popularityMap: Record<number, number> = {};
+      (ordersData as any[]).forEach((order) => {
+        const items = Array.isArray(order?.items) ? order.items : [];
+        items.forEach((item: any) => {
+          const productId = Number(item?.product_id);
+          const quantity = Number(item?.quantity || 0);
+          if (!Number.isFinite(productId)) return;
+          popularityMap[productId] = (popularityMap[productId] || 0) + (Number.isFinite(quantity) ? quantity : 0);
+        });
+      });
+      setProductPopularity(popularityMap);
 
       const inventoryPromises = suppliersData.map((supplier: Supplier) =>
         api.getSupplierInventory(supplier.id).catch(() => [])
@@ -110,6 +125,25 @@ export default function ProductsPage() {
       setIsLoading(false);
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const raw = localStorage.getItem('favorite_products');
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        setFavoriteProductIds(parsed.map((id) => Number(id)).filter((id) => Number.isFinite(id)));
+      }
+    } catch {
+      // Ignore broken local data and start with empty favorites.
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('favorite_products', JSON.stringify(favoriteProductIds));
+  }, [favoriteProductIds]);
 
   useEffect(() => {
     if (!authService.isAuthenticated()) {
@@ -189,6 +223,17 @@ export default function ProductsPage() {
       setError(err.message || 'Ошибка поиска');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const toggleFavorite = (productId: number) => {
+    setFavoriteProductIds((prev) => (
+      prev.includes(productId)
+        ? prev.filter((id) => id !== productId)
+        : [...prev, productId]
+    ));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('favorites-updated'));
     }
   };
 
@@ -387,6 +432,13 @@ export default function ProductsPage() {
         const priceA2 = inventoryA ? parseFloat(inventoryA.price) : 0;
         const priceB2 = inventoryB ? parseFloat(inventoryB.price) : 0;
         return priceB2 - priceA2;
+      case 'popularity_desc':
+        const popularityA = productPopularity[a.id] || 0;
+        const popularityB = productPopularity[b.id] || 0;
+        if (popularityB !== popularityA) {
+          return popularityB - popularityA;
+        }
+        return a.name.localeCompare(b.name, 'ru');
       case 'quantity_asc':
         const qtyA = inventoryA ? parseFloat(inventoryA.quantity) : 0;
         const qtyB = inventoryB ? parseFloat(inventoryB.quantity) : 0;
@@ -420,138 +472,142 @@ export default function ProductsPage() {
         </div>
       )}
 
-      <div className="bg-white shadow rounded-lg p-6">
-        {/* Поиск и сортировка */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Поиск
-            </label>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Название товара..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Сортировка
-            </label>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
-            >
-              <option value="name">По названию (А-Я)</option>
-              <option value="price_asc">По цене (возрастание)</option>
-              <option value="price_desc">По цене (убывание)</option>
-              <option value="quantity_desc">По наличию (больше)</option>
-              <option value="quantity_asc">По наличию (меньше)</option>
-            </select>
-          </div>
-          <div className="flex items-end">
-            <button
-              onClick={handleSearch}
-              className="w-full px-4 py-2 bg-primary-dark text-white rounded-md hover:bg-primary focus:outline-none focus:ring-2 focus:ring-primary-dark"
-            >
-              Найти
-            </button>
-          </div>
-        </div>
-
-        {/* Фильтры */}
-        <div className="mb-6 pb-6 border-b border-gray-200">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-medium text-gray-900">Фильтры</h3>
-            <button
-              type="button"
-              onClick={resetFilters}
-              className="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-primary transition-colors"
-            >
-              Сбросить фильтры
-            </button>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Категория
-              </label>
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+        <div className="xl:col-span-2">
+          <div className="bg-white shadow rounded-lg p-6 xl:sticky xl:top-24">
+            {/* Поиск и сортировка */}
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Поиск
+                </label>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Название товара..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Сортировка
+                </label>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
+                >
+                  <option value="name">По названию (А-Я)</option>
+                  <option value="price_asc">По цене (возрастание)</option>
+                  <option value="price_desc">По цене (убывание)</option>
+                  <option value="popularity_desc">По популярности заказов</option>
+                  <option value="quantity_desc">По наличию (больше)</option>
+                  <option value="quantity_asc">По наличию (меньше)</option>
+                </select>
+              </div>
+              <button
+                onClick={handleSearch}
+                className="w-full px-4 py-2 bg-primary-dark text-white rounded-md hover:bg-primary focus:outline-none focus:ring-2 focus:ring-primary-dark"
               >
-              <option value="">Все категории</option>
-              {categories.map((category) => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Поставщик
-            </label>
-            <select
-              value={selectedSupplierId || ''}
-              onChange={(e) => setSelectedSupplierId(e.target.value ? Number(e.target.value) : null)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
-            >
-              <option value="">Все поставщики</option>
-              {suppliers.map((supplier) => (
-                <option key={supplier.id} value={supplier.id}>
-                  {supplier.full_name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Наличие
-            </label>
-            <select
-              value={selectedAvailability}
-              onChange={(e) => setSelectedAvailability(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
-            >
-              <option value="all">Все товары</option>
-              <option value="in_stock">В наличии</option>
-              <option value="out_of_stock">Нет в наличии</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Цена (₽)
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="number"
-                value={minPrice}
-                onChange={(e) => setMinPrice(e.target.value)}
-                placeholder="От"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary text-sm"
-              />
-              <input
-                type="number"
-                value={maxPrice}
-                onChange={(e) => setMaxPrice(e.target.value)}
-                placeholder="До"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary text-sm"
-              />
+                Найти
+              </button>
+            </div>
+
+            {/* Фильтры */}
+            <div>
+              <div className="mb-4">
+                <h3 className="text-lg font-medium text-gray-900">Фильтры</h3>
+                <button
+                  type="button"
+                  onClick={resetFilters}
+                  className="mt-2 px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-primary transition-colors"
+                >
+                  Сбросить фильтры
+                </button>
+              </div>
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Категория
+                  </label>
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
+                  >
+                  <option value="">Все категории</option>
+                  {categories.map((category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Поставщик
+                </label>
+                <select
+                  value={selectedSupplierId || ''}
+                  onChange={(e) => setSelectedSupplierId(e.target.value ? Number(e.target.value) : null)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
+                >
+                  <option value="">Все поставщики</option>
+                  {suppliers.map((supplier) => (
+                    <option key={supplier.id} value={supplier.id}>
+                      {supplier.full_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Наличие
+                </label>
+                <select
+                  value={selectedAvailability}
+                  onChange={(e) => setSelectedAvailability(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
+                >
+                  <option value="all">Все товары</option>
+                  <option value="in_stock">В наличии</option>
+                  <option value="out_of_stock">Нет в наличии</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Цена (₽)
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    value={minPrice}
+                    onChange={(e) => setMinPrice(e.target.value)}
+                    placeholder="От"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary text-sm"
+                  />
+                  <input
+                    type="number"
+                    value={maxPrice}
+                    onChange={(e) => setMaxPrice(e.target.value)}
+                    placeholder="До"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary text-sm"
+                  />
+                </div>
+              </div>
+              </div>
             </div>
           </div>
-          </div>
         </div>
 
-        {filteredProducts.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">
-            Товары не найдены
-          </div>
-        ) : (
-          <div className="space-y-4">
+        <div className="xl:col-span-10">
+          {filteredProducts.length === 0 ? (
+            <div className="bg-white shadow rounded-lg p-6 text-center py-12 text-gray-500">
+              Товары не найдены
+            </div>
+          ) : (
+            <div className="bg-white shadow rounded-lg p-6 space-y-4">
             {filteredProducts.map((product) => {
               const productInventory = inventoryRowForProduct(inventory, product);
               const supplier = suppliers.find((s) => Number(s.id) === Number(product.supplier_id));
@@ -582,7 +638,18 @@ export default function ProductsPage() {
                   <div className="flex-1 min-w-0 flex flex-col justify-between gap-1.5 p-3">
                     {/* Верхняя часть: название и логотип */}
                     <div className="flex items-start justify-between gap-2">
-                      <h3 className="text-sm font-bold text-gray-900 flex-1 line-clamp-2 leading-tight group-hover:text-primary-dark transition-colors">{product.name}</h3>
+                      <div className="flex items-start gap-2 flex-1 min-w-0">
+                        <button
+                          type="button"
+                          onClick={() => toggleFavorite(product.id)}
+                          aria-label={favoriteProductIds.includes(product.id) ? 'Убрать из избранного' : 'Добавить в избранное'}
+                          title={favoriteProductIds.includes(product.id) ? 'Убрать из избранного' : 'Добавить в избранное'}
+                          className={`text-base leading-none mt-0.5 ${favoriteProductIds.includes(product.id) ? 'text-red-500 hover:text-red-600' : 'text-gray-400 hover:text-gray-600'}`}
+                        >
+                          ⚑
+                        </button>
+                        <h3 className="text-sm font-bold text-gray-900 flex-1 line-clamp-2 leading-tight group-hover:text-primary-dark transition-colors">{product.name}</h3>
+                      </div>
                       {/* Логотип поставщика */}
                       {supplier?.logo_url && (
                         <Link 
@@ -702,8 +769,9 @@ export default function ProductsPage() {
                 </div>
               );
             })}
-          </div>
-        )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Модальное окно с описанием товара */}
