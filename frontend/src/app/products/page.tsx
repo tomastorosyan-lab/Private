@@ -686,7 +686,7 @@ export default function ProductsPage() {
                           </div>
                         </div>
                         <div className="text-xs font-bold text-primary-dark bg-primary-light px-2 py-0.5 rounded-md whitespace-nowrap">
-                          Итого: {((productQuantities[product.id] || itemsPerBox) * parseFloat(productInventory.price)).toFixed(2)} ₽
+                          Итого: {productQuantities[product.id] || itemsPerBox} {product.unit} на сумму {((productQuantities[product.id] || itemsPerBox) * parseFloat(productInventory.price)).toFixed(2)} ₽
                         </div>
                         <button
                           onClick={() => addToCart(product, productQuantities[product.id] || itemsPerBox)}
