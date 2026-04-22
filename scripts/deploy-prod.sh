@@ -32,6 +32,13 @@ find "${BACKUP_DIR}" -type f -mtime +14 -delete
 echo "[deploy] Build and restart containers"
 docker compose -f "${COMPOSE_FILE}" up -d --build
 
+# Колонка min_order_amount до alembic/backend, чтобы ORM не падал при старте.
+if [[ -f "${APP_DIR}/scripts/sql/patch_users_min_order_amount.sql" ]]; then
+  echo "[deploy] Apply SQL patch: min_order_amount on users"
+  docker compose -f "${COMPOSE_FILE}" exec -T db psql -U postgres -d dis_db -v ON_ERROR_STOP=1 \
+    < "${APP_DIR}/scripts/sql/patch_users_min_order_amount.sql"
+fi
+
 echo "[deploy] Run DB migrations"
 docker compose -f "${COMPOSE_FILE}" exec -T backend alembic upgrade head
 

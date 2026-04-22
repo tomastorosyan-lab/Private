@@ -36,6 +36,100 @@ export default function OrderDetailPage() {
   const [isUpdating, setIsUpdating] = useState(false);
   const user = authService.getUser();
 
+  const getPackagingInfo = (item: OrderItem) => {
+    const product = products[item.product_id];
+    const itemsPerBox = product?.items_per_box && product.items_per_box > 0 ? product.items_per_box : null;
+    const quantity = Number(item.quantity);
+    if (!itemsPerBox || !Number.isFinite(quantity)) {
+      return null;
+    }
+    const boxes = quantity / itemsPerBox;
+    const roundedBoxes = Number.isInteger(boxes) ? boxes : Number(boxes.toFixed(2));
+    return {
+      boxes: roundedBoxes,
+      itemsPerBox,
+      unit: product?.unit || 'шт',
+    };
+  };
+
+  const handlePrintShipmentDoc = () => {
+    if (!order) return;
+    const createdAt = new Date(order.created_at).toLocaleString('ru-RU');
+    const rows = order.items
+      .map((item, idx) => {
+        const product = products[item.product_id];
+        const productName = product?.name || `Товар #${item.product_id}`;
+        const packaging = getPackagingInfo(item);
+        const packagingText = packaging
+          ? `${packaging.boxes} уп. (по ${packaging.itemsPerBox} ${packaging.unit})`
+          : '—';
+        return `
+          <tr>
+            <td>${idx + 1}</td>
+            <td>${productName}</td>
+            <td>${item.quantity}</td>
+            <td>${packagingText}</td>
+            <td>${formatCurrency(item.price)}</td>
+            <td>${formatCurrency(item.total)}</td>
+          </tr>
+        `;
+      })
+      .join('');
+
+    const html = `
+      <!doctype html>
+      <html lang="ru">
+        <head>
+          <meta charset="utf-8" />
+          <title>Отгрузка по заказу #${order.id}</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 24px; color: #111827; }
+            h1 { margin: 0 0 8px; font-size: 24px; }
+            .meta { margin-bottom: 16px; line-height: 1.5; }
+            table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+            th, td { border: 1px solid #d1d5db; padding: 8px; text-align: left; font-size: 13px; }
+            th { background: #f3f4f6; }
+            .total { margin-top: 16px; font-size: 18px; font-weight: bold; }
+          </style>
+        </head>
+        <body>
+          <h1>Документ на отгрузку</h1>
+          <div class="meta">
+            <div><strong>Заказ:</strong> #${order.id}</div>
+            <div><strong>Дата заказа:</strong> ${createdAt}</div>
+            <div><strong>Адрес доставки:</strong> ${order.delivery_address}</div>
+            <div><strong>Телефон:</strong> ${order.contact_phone || 'не указан'}</div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>№</th>
+                <th>Товар</th>
+                <th>Кол-во, ед.</th>
+                <th>Кол-во, уп.</th>
+                <th>Цена</th>
+                <th>Сумма</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+          <div class="total">Итого: ${formatCurrency(order.total_amount)}</div>
+        </body>
+      </html>
+    `;
+
+    const printWindow = window.open('', '_blank', 'width=1000,height=800');
+    if (!printWindow) {
+      setError('Не удалось открыть окно печати. Разрешите всплывающие окна.');
+      return;
+    }
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+  };
+
   useEffect(() => {
     if (!authService.isAuthenticated()) {
       router.push('/login');
@@ -185,6 +279,16 @@ export default function OrderDetailPage() {
             </button>
           </div>
         )}
+        {user?.user_type === 'supplier' && order.status !== 'cancelled' && (
+          <div className="mb-6">
+            <button
+              onClick={handlePrintShipmentDoc}
+              className="w-full sm:w-auto px-6 py-3 bg-primary-dark text-white rounded-md hover:bg-primary font-semibold"
+            >
+              Сформировать документ на отгрузку
+            </button>
+          </div>
+        )}
 
         {/* Кнопка отмены заказа для заказчика */}
         {user?.user_type === 'customer' && order.user_id === user.id && order.status === 'pending' && (
@@ -215,6 +319,9 @@ export default function OrderDetailPage() {
                     Количество
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Упаковок к отгрузке
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Цена
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
@@ -230,6 +337,13 @@ export default function OrderDetailPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {item.quantity}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {(() => {
+                        const packaging = getPackagingInfo(item);
+                        if (!packaging) return '—';
+                        return `${packaging.boxes} уп.`;
+                      })()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {formatCurrency(item.price)}

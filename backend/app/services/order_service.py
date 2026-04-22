@@ -99,6 +99,20 @@ class OrderService:
                 'quantity_to_reserve': item_data.quantity
             })
         
+        computed_total = sum(
+            (item.quantity * item.price) for item in order_data.items
+        )
+        min_required = supplier.min_order_amount
+        if min_required is None:
+            min_required = Decimal("0")
+        else:
+            min_required = Decimal(str(min_required))
+        if min_required > 0 and computed_total < min_required:
+            raise BusinessLogicException(
+                f"Минимальная сумма заказа у этого поставщика — {min_required} ₽. "
+                f"Сейчас в заказе: {computed_total} ₽."
+            )
+        
         order = Order(
             user_id=user_id,
             supplier_id=order_data.supplier_id,

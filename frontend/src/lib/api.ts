@@ -22,6 +22,8 @@ export interface User {
   integration_config?: any;
   logo_url?: string | null;
   delivery_address?: string | null;
+  /** Минимальная сумма заказа для поставщика (₽), 0 — без ограничения */
+  min_order_amount?: string | number;
 }
 
 export interface OrderItem {
@@ -271,6 +273,7 @@ class ApiClient {
     contact_phone?: string;
     integration_type?: string;
     integration_config?: any;
+    min_order_amount?: number;
   }) {
     return this.request<User>(`/auth/me`, {
       method: 'PATCH',

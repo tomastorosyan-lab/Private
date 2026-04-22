@@ -15,6 +15,7 @@ export interface User {
   integration_config?: any;
   logo_url?: string | null;
   delivery_address?: string | null;
+  min_order_amount?: string | number;
 }
 
 export class AuthService {

@@ -1,7 +1,8 @@
 """
 Схемы для поставщиков (теперь это пользователи типа supplier)
 """
-from pydantic import BaseModel
+from decimal import Decimal
+from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
 
@@ -17,6 +18,10 @@ class DistributorResponse(BaseModel):
     logo_url: Optional[str]  # URL логотипа компании
     is_active: bool
     created_at: datetime
+    min_order_amount: Decimal = Field(
+        default=Decimal("0"),
+        description="Минимальная сумма заказа (₽), 0 — без ограничения",
+    )
     
     class Config:
         from_attributes = True

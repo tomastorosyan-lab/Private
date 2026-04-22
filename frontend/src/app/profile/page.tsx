@@ -65,6 +65,7 @@ export default function ProfilePage() {
     contact_phone: '',
     integration_type: '',
     delivery_address: '',
+    min_order_amount: '',
   });
 
   useEffect(() => {
@@ -89,6 +90,10 @@ export default function ProfilePage() {
         contact_phone: userData.contact_phone || '',
         integration_type: userData.integration_type || 'manual',
         delivery_address: userData.delivery_address || '',
+        min_order_amount:
+          userData.min_order_amount != null && String(userData.min_order_amount).trim() !== ''
+            ? String(userData.min_order_amount).replace(',', '.')
+            : '0',
       });
       
       // Устанавливаем превью логотипа
@@ -128,6 +133,14 @@ export default function ProfilePage() {
       if (phoneError) errors.contact_phone = phoneError;
     }
 
+    if (user?.user_type === 'supplier') {
+      const rawMin = formData.min_order_amount.trim().replace(',', '.');
+      const minNum = parseFloat(rawMin);
+      if (rawMin !== '' && (!Number.isFinite(minNum) || minNum < 0)) {
+        errors.min_order_amount = 'Укажите неотрицательное число (минимальная сумма заказа, ₽)';
+      }
+    }
+
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
       return;
@@ -158,6 +171,17 @@ export default function ProfilePage() {
       }
       if (formData.delivery_address !== user?.delivery_address) {
         updateData.delivery_address = formData.delivery_address || null;
+      }
+
+      if (user?.user_type === 'supplier') {
+        const prevMin =
+          user?.min_order_amount != null && String(user.min_order_amount).trim() !== ''
+            ? parseFloat(String(user.min_order_amount).replace(',', '.'))
+            : 0;
+        const nextMin = parseFloat(formData.min_order_amount.trim().replace(',', '.') || '0');
+        if (Number.isFinite(nextMin) && nextMin >= 0 && nextMin !== prevMin) {
+          updateData.min_order_amount = nextMin;
+        }
       }
 
       // Если нет изменений
@@ -509,6 +533,38 @@ export default function ProfilePage() {
           </div>
 
           {/* Тип интеграции (для поставщиков) */}
+          {user.user_type === 'supplier' && (
+            <div>
+              <label htmlFor="min_order_amount" className="block text-sm font-medium text-gray-700">
+                Минимальная сумма заказа (₽)
+              </label>
+              <input
+                type="number"
+                id="min_order_amount"
+                min={0}
+                step="0.01"
+                value={formData.min_order_amount}
+                onChange={(e) => {
+                  setFormData({ ...formData, min_order_amount: e.target.value });
+                  if (fieldErrors.min_order_amount) {
+                    setFieldErrors({ ...fieldErrors, min_order_amount: '' });
+                  }
+                }}
+                className={`mt-1 block w-full px-3 py-2 border ${
+                  fieldErrors.min_order_amount ? 'border-red-300' : 'border-gray-300'
+                } rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm`}
+                placeholder="0"
+              />
+              {fieldErrors.min_order_amount && (
+                <p className="mt-1 text-sm text-red-600">{fieldErrors.min_order_amount}</p>
+              )}
+              <p className="mt-1 text-xs text-gray-500">
+                0 — без ограничения. Покупатель не сможет оформить заказ у вас, пока сумма по вашим
+                позициям в корзине не достигнет этого значения.
+              </p>
+            </div>
+          )}
+
           {user.user_type === 'supplier' && (
             <div>
               <label htmlFor="integration_type" className="block text-sm font-medium text-gray-700">

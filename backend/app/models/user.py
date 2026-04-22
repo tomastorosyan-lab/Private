@@ -1,7 +1,7 @@
 """
 Модель пользователя
 """
-from sqlalchemy import Column, Integer, String, Boolean, Enum, DateTime, Text, JSON
+from sqlalchemy import Column, Integer, String, Boolean, Enum, DateTime, Text, JSON, Numeric
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum
@@ -33,6 +33,8 @@ class User(Base):
     integration_config = Column(JSON, nullable=True)  # Конфигурация интеграции
     logo_url = Column(String, nullable=True)  # URL логотипа компании
     delivery_address = Column(String, nullable=True)  # Адрес доставки (для заказчиков)
+    # Минимальная сумма заказа для поставщика (₽); 0 — без ограничения
+    min_order_amount = Column(Numeric(12, 2), nullable=False, default=0, server_default="0")
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

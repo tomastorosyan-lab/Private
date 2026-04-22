@@ -1,6 +1,7 @@
 """
 Сервис аутентификации
 """
+from decimal import Decimal
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 from app.models.user import User, UserType
@@ -121,6 +122,17 @@ class AuthService:
             user.logo_url = user_update.logo_url if user_update.logo_url else None
         if user_update.delivery_address is not None:
             user.delivery_address = user_update.delivery_address
+
+        if "min_order_amount" in user_update.model_fields_set:
+            if user.user_type != UserType.SUPPLIER:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Минимальную сумму заказа может задавать только поставщик",
+                )
+            if user_update.min_order_amount is None:
+                user.min_order_amount = Decimal("0")
+            else:
+                user.min_order_amount = user_update.min_order_amount
         
         self.db.commit()
         self.db.refresh(user)

@@ -1,6 +1,7 @@
 """
 Схемы для аутентификации
 """
+from decimal import Decimal
 from pydantic import BaseModel, EmailStr, Field
 from app.models.user import UserType
 
@@ -24,6 +25,10 @@ class UserResponse(BaseModel):
     integration_config: dict | None = Field(None, description="Конфигурация интеграции")
     logo_url: str | None = Field(None, description="URL логотипа компании")
     delivery_address: str | None = Field(None, description="Адрес доставки (для заказчиков)")
+    min_order_amount: Decimal = Field(
+        default=Decimal("0"),
+        description="Минимальная сумма заказа для поставщика (₽), 0 — без ограничения",
+    )
     
     class Config:
         from_attributes = True
@@ -40,6 +45,11 @@ class UserUpdate(BaseModel):
     integration_config: dict | None = Field(None, description="Конфигурация интеграции")
     logo_url: str | None = Field(None, description="URL логотипа компании")
     delivery_address: str | None = Field(None, description="Адрес доставки (для заказчиков)", example="г. Москва, ул. Ленина, д. 1")
+    min_order_amount: Decimal | None = Field(
+        None,
+        description="Минимальная сумма заказа для поставщика (₽), 0 — без ограничения",
+        ge=0,
+    )
 
 
 class Token(BaseModel):

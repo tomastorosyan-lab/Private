@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { authService } from '@/lib/auth';
@@ -26,6 +26,17 @@ interface Supplier {
   id: number;
   full_name: string;
   email: string;
+  min_order_amount?: string | number;
+}
+
+function parseSupplierMinOrderAmount(s: Supplier | undefined): number {
+  if (!s || s.min_order_amount == null || String(s.min_order_amount).trim() === '') return 0;
+  const raw =
+    typeof s.min_order_amount === 'string'
+      ? parseFloat(s.min_order_amount.replace(',', '.'))
+      : Number(s.min_order_amount);
+  if (!Number.isFinite(raw) || raw < 0) return 0;
+  return raw;
 }
 
 interface CartItem {
@@ -300,12 +311,32 @@ export default function NewOrderPage() {
     return cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   };
 
+  /** Для каждого поставщика в корзине сумма по позициям ≥ min_order_amount (если min > 0). */
+  const supplierMinOrderSatisfied = useMemo(() => {
+    const totalsBySupplier: Record<number, number> = {};
+    cart.forEach((item) => {
+      const sid = item.product.supplier_id;
+      totalsBySupplier[sid] = (totalsBySupplier[sid] || 0) + item.price * item.quantity;
+    });
+    return Object.entries(totalsBySupplier).every(([sidStr, total]) => {
+      const sid = Number(sidStr);
+      const supplier = suppliers.find((s) => Number(s.id) === sid);
+      const min = parseSupplierMinOrderAmount(supplier);
+      return min <= 0 || total >= min;
+    });
+  }, [cart, suppliers]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
     if (cart.length === 0) {
       setError('Добавьте товары в заказ');
+      return;
+    }
+
+    if (!supplierMinOrderSatisfied) {
+      setError('Для каждого поставщика сумма заказа должна быть не ниже указанного минимума');
       return;
     }
 
@@ -382,10 +413,6 @@ export default function NewOrderPage() {
     return hasStock;
   });
 
-  // Отладочная информация
-  console.log('Корзина:', cart);
-  console.log('Количество товаров в корзине:', cart.length);
-
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold text-gray-900">Создание заказа</h1>
@@ -432,6 +459,8 @@ export default function NewOrderPage() {
               return Object.entries(cartBySupplier).map(([supplierId, items]) => {
                 const supplier = suppliers.find((s) => s.id === Number(supplierId));
                 const supplierTotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+                const minOrder = parseSupplierMinOrderAmount(supplier);
+                const minMet = minOrder <= 0 || supplierTotal >= minOrder;
                 
                 // Группируем товары по категориям внутри поставщика
                 const cartByCategory: Record<string, CartItem[]> = {};
@@ -625,6 +654,25 @@ export default function NewOrderPage() {
                           </div>
                         );
                       })}
+                      <div
+                        className={`mt-3 rounded-md border px-3 py-2 text-sm font-medium ${
+                          minOrder <= 0
+                            ? 'border-slate-200 bg-slate-50 text-slate-700'
+                            : minMet
+                              ? 'border-green-200 bg-green-50 text-green-800'
+                              : 'border-red-200 bg-red-50 text-red-800'
+                        }`}
+                      >
+                        {minOrder > 0 ? (
+                          <>
+                            Минимальный заказ: {formatCurrency(minOrder)} · сейчас по позициям:{' '}
+                            {formatCurrency(supplierTotal)}
+                            {!minMet && ' — не достигнут'}
+                          </>
+                        ) : (
+                          <span>Минимальный заказ не задан (без ограничения по сумме)</span>
+                        )}
+                      </div>
                       <div className="flex justify-between items-center pt-2 border-t mt-4">
                         <span className="text-sm font-medium text-gray-600">Итого по поставщику:</span>
                         <span className="text-lg font-bold">{formatCurrency(supplierTotal)}</span>
@@ -704,8 +752,13 @@ export default function NewOrderPage() {
           </button>
           <button
             type="submit"
-            disabled={isLoading || cart.length === 0}
+            disabled={isLoading || cart.length === 0 || !supplierMinOrderSatisfied}
             className="px-6 py-2 bg-primary-dark text-white rounded-md hover:bg-primary disabled:opacity-50"
+            title={
+              !supplierMinOrderSatisfied && cart.length > 0
+                ? 'Сначала достигните минимальной суммы заказа у каждого поставщика'
+                : undefined
+            }
           >
             {isLoading ? 'Создание...' : 'Создать заказ'}
           </button>
