@@ -474,11 +474,11 @@ export default function ProductsPage() {
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
         <div className="xl:col-span-2">
-          <div className="bg-white shadow rounded-lg p-6 xl:sticky xl:top-24">
+          <div className="bg-slate-100/90 border border-slate-200 rounded-2xl p-4 xl:sticky xl:top-24">
             {/* Поиск и сортировка */}
-            <div className="space-y-4 mb-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div className="space-y-3 mb-6">
+              <div className="rounded-xl bg-white border border-slate-200 p-3">
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
                   Поиск
                 </label>
                 <input
@@ -486,17 +486,17 @@ export default function ProductsPage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Название товара..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-primary focus:border-primary"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+              <div className="rounded-xl bg-white border border-slate-200 p-3">
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
                   Сортировка
                 </label>
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-primary focus:border-primary"
                 >
                   <option value="name">По названию (А-Я)</option>
                   <option value="price_asc">По цене (возрастание)</option>
@@ -508,7 +508,7 @@ export default function ProductsPage() {
               </div>
               <button
                 onClick={handleSearch}
-                className="w-full px-4 py-2 bg-primary-dark text-white rounded-md hover:bg-primary focus:outline-none focus:ring-2 focus:ring-primary-dark"
+                className="w-full px-4 py-2 bg-primary-dark text-white rounded-xl font-medium hover:bg-primary focus:outline-none focus:ring-2 focus:ring-primary-dark"
               >
                 Найти
               </button>
@@ -517,24 +517,24 @@ export default function ProductsPage() {
             {/* Фильтры */}
             <div>
               <div className="mb-4">
-                <h3 className="text-lg font-medium text-gray-900">Фильтры</h3>
+                <h3 className="text-xl font-bold text-slate-800">Фильтры</h3>
                 <button
                   type="button"
                   onClick={resetFilters}
-                  className="mt-2 px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-primary transition-colors"
+                  className="mt-2 w-full px-4 py-2 text-sm text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-primary transition-colors"
                 >
                   Сбросить фильтры
                 </button>
               </div>
               <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div className="rounded-xl bg-white border border-slate-200 p-3">
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
                     Категория
                   </label>
                   <select
                     value={selectedCategory}
                     onChange={(e) => setSelectedCategory(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-primary focus:border-primary"
                   >
                   <option value="">Все категории</option>
                   {categories.map((category) => (
@@ -544,14 +544,14 @@ export default function ProductsPage() {
                   ))}
                 </select>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+              <div className="rounded-xl bg-white border border-slate-200 p-3">
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
                   Поставщик
                 </label>
                 <select
                   value={selectedSupplierId || ''}
                   onChange={(e) => setSelectedSupplierId(e.target.value ? Number(e.target.value) : null)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-primary focus:border-primary"
                 >
                   <option value="">Все поставщики</option>
                   {suppliers.map((supplier) => (
@@ -561,22 +561,22 @@ export default function ProductsPage() {
                   ))}
                 </select>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+              <div className="rounded-xl bg-white border border-slate-200 p-3">
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
                   Наличие
                 </label>
                 <select
                   value={selectedAvailability}
                   onChange={(e) => setSelectedAvailability(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-primary focus:border-primary"
                 >
                   <option value="all">Все товары</option>
                   <option value="in_stock">В наличии</option>
                   <option value="out_of_stock">Нет в наличии</option>
                 </select>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+              <div className="rounded-xl bg-white border border-slate-200 p-3">
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
                   Цена (₽)
                 </label>
                 <div className="flex gap-2">
@@ -585,14 +585,14 @@ export default function ProductsPage() {
                     value={minPrice}
                     onChange={(e) => setMinPrice(e.target.value)}
                     placeholder="От"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary text-sm"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-primary focus:border-primary text-sm"
                   />
                   <input
                     type="number"
                     value={maxPrice}
                     onChange={(e) => setMaxPrice(e.target.value)}
                     placeholder="До"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary text-sm"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-primary focus:border-primary text-sm"
                   />
                 </div>
               </div>
@@ -607,7 +607,7 @@ export default function ProductsPage() {
               Товары не найдены
             </div>
           ) : (
-            <div className="bg-white shadow rounded-lg p-6 space-y-4">
+            <div className="bg-white shadow rounded-lg p-6 grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4">
             {filteredProducts.map((product) => {
               const productInventory = inventoryRowForProduct(inventory, product);
               const supplier = suppliers.find((s) => Number(s.id) === Number(product.supplier_id));
@@ -616,22 +616,22 @@ export default function ProductsPage() {
               return (
                 <div
                   key={product.id}
-                  className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg hover:border-primary-light transition-all duration-200 flex flex-row items-stretch min-h-[120px] group"
+                  className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg hover:border-primary-light transition-all duration-200 flex flex-col group"
                 >
                   {/* Изображение на всю высоту карточки */}
                   {product.image_url ? (
                     <div
-                      className="w-24 sm:w-28 md:w-32 shrink-0 self-stretch relative overflow-hidden bg-gray-100 border-r border-gray-200"
+                      className="w-full h-44 shrink-0 relative overflow-hidden bg-gray-100 border-b border-gray-200"
                       onClick={() => setSelectedProductForDescription(product)}
                     >
                       <img
                         src={`${getPublicApiBase()}${product.image_url}`}
                         alt={product.name}
-                        className="h-full w-full min-h-[120px] object-cover object-center cursor-pointer transition-transform duration-300 group-hover:scale-[1.02]"
+                        className="h-full w-full object-cover object-center cursor-pointer transition-transform duration-300 group-hover:scale-[1.02]"
                       />
                     </div>
                   ) : (
-                    <div className="w-24 sm:w-28 md:w-32 shrink-0 self-stretch min-h-[120px] bg-gray-50 border-r border-gray-100" />
+                    <div className="w-full h-44 shrink-0 bg-gray-50 border-b border-gray-100" />
                   )}
 
                   {/* Основной контент */}
