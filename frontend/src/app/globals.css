@@ -23,6 +23,15 @@
       @apply text-base;
     }
   }
+
+  /* Tactile feedback: every button visibly presses on click/tap */
+  button {
+    @apply transition-transform duration-100 ease-out;
+  }
+
+  button:active {
+    transform: translateY(1px) scale(0.98);
+  }
 }
 
 /* B2B shell: neutral base, soft cool highlight (readable, not decorative) */
