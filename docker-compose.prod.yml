@@ -29,6 +29,8 @@ services:
       - .env
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/dis_db}
+    volumes:
+      - uploads_data:/app/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -49,3 +51,4 @@ services:
 
 volumes:
   postgres_data:
+  uploads_data:
