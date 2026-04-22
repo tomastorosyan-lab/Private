@@ -325,6 +325,14 @@ export default function ProfilePage() {
         </div>
       )}
 
+      {user.user_type === 'supplier' && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 shadow-sm">
+          Поле <strong>«Минимальная сумма заказа»</strong> находится в форме ниже (перед типом интеграции).
+          Значение 0 означает «без ограничения». Покупатель увидит порог в корзине на странице оформления
+          заказа.
+        </div>
+      )}
+
       <div className="bg-white shadow rounded-lg p-6">
         {/* Секция логотипа */}
         <div className="mb-6 pb-6 border-b">
@@ -532,7 +540,7 @@ export default function ProfilePage() {
             </p>
           </div>
 
-          {/* Тип интеграции (для поставщиков) */}
+          {/* Минимальная сумма заказа (только поставщик) */}
           {user.user_type === 'supplier' && (
             <div>
               <label htmlFor="min_order_amount" className="block text-sm font-medium text-gray-700">
