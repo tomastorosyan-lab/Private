@@ -420,13 +420,6 @@ export default function ProductsPage() {
         </div>
       )}
 
-      {success && (
-        <div className="rounded-md bg-green-50 p-4">
-          <div className="text-sm text-green-800">{success}</div>
-        </div>
-      )}
-
-
       <div className="bg-white shadow rounded-lg p-6">
         {/* Поиск и сортировка */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
