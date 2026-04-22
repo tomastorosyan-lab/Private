@@ -612,6 +612,7 @@ export default function ProductsPage() {
               const productInventory = inventoryRowForProduct(inventory, product);
               const supplier = suppliers.find((s) => Number(s.id) === Number(product.supplier_id));
               const itemsPerBox = product.items_per_box || 1; // Количество штук в упаковке
+              const selectedQuantity = productQuantities[product.id] ?? 0;
               
               return (
                 <div
@@ -694,8 +695,8 @@ export default function ProductsPage() {
                             <button
                               type="button"
                               onClick={() => {
-                                const currentBoxes = productQuantities[product.id] ? Math.floor(productQuantities[product.id] / itemsPerBox) : 1;
-                                const newBoxes = Math.max(1, currentBoxes - 1);
+                                const currentBoxes = Math.floor(selectedQuantity / itemsPerBox);
+                                const newBoxes = Math.max(0, currentBoxes - 1);
                                 const totalQuantity = newBoxes * itemsPerBox;
                                 setProductQuantities(prev => ({
                                   ...prev,
@@ -710,14 +711,14 @@ export default function ProductsPage() {
                             <input
                               type="number"
                               id={`quantity-${product.id}`}
-                              min="1"
+                              min="0"
                               step="1"
                               max={Math.floor(parseFloat(productInventory.quantity) / itemsPerBox)}
-                              value={productQuantities[product.id] ? Math.floor(productQuantities[product.id] / itemsPerBox) : 1}
+                              value={Math.floor(selectedQuantity / itemsPerBox)}
                               onChange={(e) => {
-                                const boxes = parseInt(e.target.value) || 1;
+                                const boxes = parseInt(e.target.value) || 0;
                                 const maxBoxes = Math.floor(parseFloat(productInventory.quantity) / itemsPerBox);
-                                const clampedBoxes = Math.max(1, Math.min(boxes, maxBoxes));
+                                const clampedBoxes = Math.max(0, Math.min(boxes, maxBoxes));
                                 const totalQuantity = clampedBoxes * itemsPerBox;
                                 setProductQuantities(prev => ({
                                   ...prev,
@@ -729,7 +730,7 @@ export default function ProductsPage() {
                             <button
                               type="button"
                               onClick={() => {
-                                const currentBoxes = productQuantities[product.id] ? Math.floor(productQuantities[product.id] / itemsPerBox) : 1;
+                                const currentBoxes = Math.floor(selectedQuantity / itemsPerBox);
                                 const maxBoxes = Math.floor(parseFloat(productInventory.quantity) / itemsPerBox);
                                 const newBoxes = Math.min(maxBoxes, currentBoxes + 1);
                                 const totalQuantity = newBoxes * itemsPerBox;
@@ -746,11 +747,16 @@ export default function ProductsPage() {
                           </div>
                         </div>
                         <div className="text-xs font-bold text-primary-dark bg-primary-light px-2 py-0.5 rounded-md whitespace-nowrap">
-                          Итого: {productQuantities[product.id] || itemsPerBox} {product.unit} на сумму {((productQuantities[product.id] || itemsPerBox) * parseFloat(productInventory.price)).toFixed(2)} ₽
+                          Итого: {selectedQuantity} {product.unit} на сумму {(selectedQuantity * parseFloat(productInventory.price)).toFixed(2)} ₽
                         </div>
                         <button
-                          onClick={() => addToCart(product, productQuantities[product.id] || itemsPerBox)}
-                          className="px-3 py-1 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg text-xs font-bold hover:from-green-700 hover:to-green-800 shadow-md hover:shadow-lg transition-all whitespace-nowrap flex-shrink-0"
+                          onClick={() => addToCart(product, selectedQuantity)}
+                          disabled={selectedQuantity === 0}
+                          className={`px-3 py-1 rounded-lg text-xs font-bold shadow-md transition-all whitespace-nowrap flex-shrink-0 ${
+                            selectedQuantity === 0
+                              ? 'bg-green-200 text-green-800 cursor-not-allowed'
+                              : 'bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800 hover:shadow-lg'
+                          }`}
                         >
                           В корзину
                         </button>
