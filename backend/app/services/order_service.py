@@ -4,6 +4,7 @@
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from decimal import Decimal
+import logging
 from app.models.order import Order, OrderItem, OrderStatus
 from app.models.product import Product
 from app.models.user import User, UserType
@@ -11,6 +12,10 @@ from app.models.inventory import Inventory
 from app.schemas.order import OrderCreate, OrderUpdate
 from app.core.exceptions import NotFoundException, BusinessLogicException, ForbiddenException
 from app.core.permissions import can_modify_order, can_view_order
+from app.services.email_service import EmailService
+
+
+logger = logging.getLogger(__name__)
 
 
 class OrderService:
@@ -141,6 +146,25 @@ class OrderService:
         # Сохраняем все изменения
         self.db.commit()
         self.db.refresh(order)
+
+        # Уведомление магазина о новом заказе.
+        # Не должно ломать оформление заказа, если SMTP недоступен.
+        try:
+            customer = self.db.query(User).filter(User.id == user_id).first()
+            if customer:
+                item_lines = [
+                    f"- {item.quantity} x {item.product.name if item.product else f'Товар #{item.product_id}'} "
+                    f"по {item.price} ₽ = {item.total} ₽"
+                    for item in order.items
+                ]
+                EmailService.send_new_order_notification(
+                    order=order,
+                    customer=customer,
+                    supplier=supplier,
+                    item_lines=item_lines,
+                )
+        except Exception:
+            logger.exception("Failed to process new order email notification for order_id=%s", order.id)
         
         return order
     
