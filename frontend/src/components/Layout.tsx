@@ -12,6 +12,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState(authService.getUser());
   const [isLoading, setIsLoading] = useState(true);
   const [cartCount, setCartCount] = useState(0);
+  const [cartTotal, setCartTotal] = useState(0);
   const [pendingIncomingCount, setPendingIncomingCount] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -69,14 +70,23 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             // Проверяем, что это массив и он не пустой
             if (Array.isArray(cartData) && cartData.length > 0) {
               setCartCount(cartData.length);
+              const total = cartData.reduce((sum: number, item: any) => {
+                const price = Number(item?.price || 0);
+                const quantity = Number(item?.quantity || 0);
+                return sum + price * quantity;
+              }, 0);
+              setCartTotal(total);
             } else {
               setCartCount(0);
+              setCartTotal(0);
             }
           } catch (e) {
             setCartCount(0);
+            setCartTotal(0);
           }
         } else {
           setCartCount(0);
+          setCartTotal(0);
         }
       }
     };
@@ -168,6 +178,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     }
     return pathname === href;
   };
+
+  const formatCartTotal = (total: number) =>
+    `${total.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₽`;
 
   if (isLoading) {
     return (
@@ -294,6 +307,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                       <span className="mr-1 sm:mr-2">🛒</span>
                       <span className="hidden md:inline">Корзина</span>
                       {cartCount > 0 && (
+                        <span className="ml-2 hidden lg:inline text-xs font-semibold text-secondary-dark/90">
+                          на {formatCartTotal(cartTotal)}
+                        </span>
+                      )}
+                      {cartCount > 0 && (
                         <span className="ml-1 inline-flex items-center justify-center rounded-full bg-white/90 px-1.5 py-0.5 text-xs font-semibold leading-none text-secondary-dark sm:ml-2 sm:px-2 sm:py-1">
                           {cartCount}
                         </span>
@@ -407,6 +425,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                           onClick={() => setMobileMenuOpen(false)}
                         >
                           🛒 Корзина {cartCount > 0 && `(${cartCount})`}
+                          {cartCount > 0 && ` на ${formatCartTotal(cartTotal)}`}
                         </Link>
                         <Link
                           href="/distributors"
