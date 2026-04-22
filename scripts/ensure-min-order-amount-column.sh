@@ -10,5 +10,14 @@ if [[ ! -f "${SQL}" ]]; then
   exit 1
 fi
 
-docker compose -f "${COMPOSE_FILE}" exec -T db psql -U postgres -d dis_db -v ON_ERROR_STOP=1 < "${SQL}"
+if docker compose version >/dev/null 2>&1; then
+  compose() { docker compose -f "${COMPOSE_FILE}" "$@"; }
+elif command -v docker-compose >/dev/null 2>&1; then
+  compose() { docker-compose -f "${COMPOSE_FILE}" "$@"; }
+else
+  echo "Need docker compose or docker-compose" >&2
+  exit 1
+fi
+
+compose exec -T db psql -U postgres -d dis_db -v ON_ERROR_STOP=1 < "${SQL}"
 echo "[ensure-min-order] OK"
