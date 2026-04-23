@@ -112,6 +112,27 @@ export default function ManageProductsPage() {
   ) => {
     const displayedW = image.naturalWidth * scale;
     const displayedH = image.naturalHeight * scale;
+    // Если изображение меньше рамки, держим его по центру (без обрезки).
+    if (displayedW <= CROP_FRAME_SIZE && displayedH <= CROP_FRAME_SIZE) {
+      return {
+        x: (CROP_FRAME_SIZE - displayedW) / 2,
+        y: (CROP_FRAME_SIZE - displayedH) / 2,
+      };
+    }
+    if (displayedW <= CROP_FRAME_SIZE) {
+      const minY = CROP_FRAME_SIZE - displayedH;
+      return {
+        x: (CROP_FRAME_SIZE - displayedW) / 2,
+        y: Math.min(0, Math.max(minY, y)),
+      };
+    }
+    if (displayedH <= CROP_FRAME_SIZE) {
+      const minX = CROP_FRAME_SIZE - displayedW;
+      return {
+        x: Math.min(0, Math.max(minX, x)),
+        y: (CROP_FRAME_SIZE - displayedH) / 2,
+      };
+    }
     const minX = CROP_FRAME_SIZE - displayedW;
     const minY = CROP_FRAME_SIZE - displayedH;
     return {
@@ -133,7 +154,8 @@ export default function ManageProductsPage() {
       const src = String(reader.result || '');
       const img = new Image();
       img.onload = () => {
-        const minScale = Math.max(
+        // Показываем изображение целиком в рамке по умолчанию.
+        const minScale = Math.min(
           CROP_FRAME_SIZE / img.naturalWidth,
           CROP_FRAME_SIZE / img.naturalHeight
         );
@@ -158,6 +180,25 @@ export default function ManageProductsPage() {
 
   const applyCrop = async () => {
     if (!cropDraft) return;
+    const frameCanvas = document.createElement('canvas');
+    frameCanvas.width = CROP_FRAME_SIZE;
+    frameCanvas.height = CROP_FRAME_SIZE;
+    const frameCtx = frameCanvas.getContext('2d');
+    if (!frameCtx) {
+      setError('Не удалось подготовить изображение');
+      return;
+    }
+
+    frameCtx.fillStyle = '#ffffff';
+    frameCtx.fillRect(0, 0, CROP_FRAME_SIZE, CROP_FRAME_SIZE);
+    frameCtx.drawImage(
+      cropDraft.imageEl,
+      cropDraft.x,
+      cropDraft.y,
+      cropDraft.imageEl.naturalWidth * cropDraft.scale,
+      cropDraft.imageEl.naturalHeight * cropDraft.scale
+    );
+
     const canvas = document.createElement('canvas');
     canvas.width = STANDARD_IMAGE_SIZE;
     canvas.height = STANDARD_IMAGE_SIZE;
@@ -166,23 +207,7 @@ export default function ManageProductsPage() {
       setError('Не удалось подготовить изображение');
       return;
     }
-
-    const sx = (0 - cropDraft.x) / cropDraft.scale;
-    const sy = (0 - cropDraft.y) / cropDraft.scale;
-    const sw = CROP_FRAME_SIZE / cropDraft.scale;
-    const sh = CROP_FRAME_SIZE / cropDraft.scale;
-
-    ctx.drawImage(
-      cropDraft.imageEl,
-      sx,
-      sy,
-      sw,
-      sh,
-      0,
-      0,
-      STANDARD_IMAGE_SIZE,
-      STANDARD_IMAGE_SIZE
-    );
+    ctx.drawImage(frameCanvas, 0, 0, STANDARD_IMAGE_SIZE, STANDARD_IMAGE_SIZE);
 
     const blob: Blob | null = await new Promise((resolve) =>
       canvas.toBlob(resolve, STANDARD_IMAGE_TYPE, 0.9)
