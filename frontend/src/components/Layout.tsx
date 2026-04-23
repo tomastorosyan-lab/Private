@@ -16,6 +16,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [favoritesCount, setFavoritesCount] = useState(0);
   const [pendingIncomingCount, setPendingIncomingCount] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [headerSearchQuery, setHeaderSearchQuery] = useState('');
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -214,6 +215,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const formatCartTotal = (total: number) =>
     `${total.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₽`;
 
+  const handleHeaderSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (user?.user_type === 'supplier') {
+      router.push('/products/manage');
+      return;
+    }
+    router.push('/products');
+  };
+
   if (isLoading) {
     return (
       <div className="app-shell flex min-h-screen items-center justify-center">
@@ -228,20 +238,25 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     <div className="app-shell min-h-screen">
       <nav className="fixed left-0 right-0 top-0 z-50 border-b border-slate-200/90 bg-white/85 shadow-surface backdrop-blur-md supports-[backdrop-filter]:bg-white/75">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <Link 
+          <div className="flex h-20 items-center gap-2">
+            <div className="flex items-center gap-2">
+              <Link
                 href="/about"
                 className="flex items-center px-2 py-2 text-lg font-semibold tracking-tight text-slate-800 sm:text-xl"
               >
-                <img 
-                  src="/logo.svg" 
-                  alt="Человек с блокнотом" 
-                  className="mr-2 w-8 h-8 flex-shrink-0"
+                <img
+                  src="/logo.svg"
+                  alt="DIS"
+                  className="mr-2 h-8 w-8 flex-shrink-0"
                 />
                 <span className="hidden sm:inline">DIS</span>
               </Link>
-              {/* Мобильное меню кнопка */}
+              <Link
+                href={user?.user_type === 'supplier' ? '/products/manage' : '/products'}
+                className="hidden rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 sm:inline-flex"
+              >
+                Каталог
+              </Link>
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 className="sm:hidden ml-2 inline-flex items-center justify-center rounded-md p-2 text-slate-600 hover:bg-slate-100 hover:text-primary"
@@ -255,99 +270,63 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   )}
                 </svg>
               </button>
-              <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-                {user && (
-                  <>
-                    {user.user_type === 'supplier' && (
-                      <Link
-                        href="/products/manage"
-                        className={`relative z-10 inline-flex items-center border-b-2 px-1 pt-1 text-sm font-medium transition-colors ${
-                          isActive('/products/manage')
-                            ? 'border-primary text-primary-dark'
-                            : 'border-transparent text-slate-700 hover:border-primary/40 hover:text-primary'
-                        }`}
-                      >
-                        Мои товары
-                      </Link>
-                    )}
-                    {user.user_type === 'customer' && (
-                      <Link
-                        href="/products"
-                        className={`relative z-10 inline-flex items-center border-b-2 px-1 pt-1 text-sm font-medium transition-colors ${
-                          isActive('/products')
-                            ? 'border-primary text-primary-dark'
-                            : 'border-transparent text-slate-700 hover:border-primary/40 hover:text-primary'
-                        }`}
-                      >
-                        Каталог
-                      </Link>
-                    )}
-                    <Link
-                      href="/orders"
-                      className={`relative inline-flex items-center gap-1.5 border-b-2 px-1 pt-1 text-sm font-medium transition-colors ${
-                        isActive('/orders')
-                          ? 'border-primary text-primary-dark'
-                          : 'border-transparent text-slate-700 hover:border-primary/40 hover:text-primary'
-                      }`}
-                      aria-label={
-                        user.user_type === 'supplier' && pendingIncomingCount > 0
-                          ? `Входящие заказы, ожидают обработки: ${pendingIncomingCount}`
-                          : undefined
-                      }
-                    >
-                      <span>
-                        {user.user_type === 'supplier' ? 'Входящие заказы' : 'Заказы'}
-                      </span>
-                      {user.user_type === 'supplier' && pendingIncomingCount > 0 && (
-                        <span
-                          className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-amber-100 px-1.5 py-0.5 text-xs font-semibold tabular-nums text-amber-900 ring-1 ring-amber-200/80"
-                          title={`Ожидают обработки: ${pendingIncomingCount}`}
-                        >
-                          {pendingIncomingCount}
-                        </span>
-                      )}
-                    </Link>
-                    {user.user_type === 'customer' && (
-                      <Link
-                        href="/distributors"
-                        className={`inline-flex items-center border-b-2 px-1 pt-1 text-sm font-medium transition-colors ${
-                          isActive('/distributors')
-                            ? 'border-primary text-primary-dark'
-                            : 'border-transparent text-slate-700 hover:border-primary/40 hover:text-primary'
-                        }`}
-                      >
-                        Поставщики
-                      </Link>
-                    )}
-                    {user.user_type === 'customer' && (
-                      <Link
-                        href="/favorites"
-                        className={`inline-flex items-center gap-1 border-b-2 px-1 pt-1 text-sm font-medium transition-colors ${
-                          isActive('/favorites')
-                            ? 'border-primary text-primary-dark'
-                            : 'border-transparent text-slate-700 hover:border-primary/40 hover:text-primary'
-                        }`}
-                      >
-                        <span>Избранное</span>
-                        {favoritesCount > 0 && (
-                          <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-rose-100 px-1.5 py-0.5 text-xs font-semibold tabular-nums text-rose-900">
-                            {favoritesCount}
-                          </span>
-                        )}
-                      </Link>
-                    )}
-                  </>
-                )}
-              </div>
             </div>
+
+            <form onSubmit={handleHeaderSearch} className="hidden flex-1 items-center gap-2 sm:flex">
+              <input
+                type="text"
+                value={headerSearchQuery}
+                onChange={(e) => setHeaderSearchQuery(e.target.value)}
+                placeholder="Искать в DIS"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200"
+              />
+              <button
+                type="submit"
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+              >
+                🔎
+              </button>
+            </form>
+
             <div className="hidden sm:flex items-center">
               {user ? (
                 <div className="flex items-center space-x-2 sm:space-x-4">
-                  {/* Индикатор корзины для заказчиков */}
+                  {user.user_type === 'supplier' && (
+                    <Link
+                      href="/products/manage"
+                      className="text-xs text-slate-600 hover:text-primary"
+                    >
+                      Мои товары
+                    </Link>
+                  )}
+                  <Link
+                    href="/orders"
+                    className="relative text-xs text-slate-600 hover:text-primary"
+                  >
+                    {user.user_type === 'supplier' ? 'Заказы' : 'Заказы'}
+                    {user.user_type === 'supplier' && pendingIncomingCount > 0 && (
+                      <span className="ml-1 inline-flex min-w-[1rem] items-center justify-center rounded-full bg-amber-100 px-1 text-[10px] font-semibold text-amber-900">
+                        {pendingIncomingCount}
+                      </span>
+                    )}
+                  </Link>
+                  {user.user_type === 'customer' && (
+                    <Link
+                      href="/favorites"
+                      className="relative text-xs text-slate-600 hover:text-primary"
+                    >
+                      Избранное
+                      {favoritesCount > 0 && (
+                        <span className="ml-1 inline-flex min-w-[1rem] items-center justify-center rounded-full bg-rose-100 px-1 text-[10px] font-semibold text-rose-900">
+                          {favoritesCount}
+                        </span>
+                      )}
+                    </Link>
+                  )}
                   {user.user_type === 'customer' && (
                     <Link
                       href="/orders/new"
-                      className={`relative inline-flex items-center rounded-lg px-2 py-2 text-xs font-medium transition-colors sm:px-4 sm:text-sm ${
+                      className={`relative inline-flex items-center rounded-lg px-2 py-2 text-xs font-medium transition-colors sm:px-3 ${
                         cartCount > 0
                           ? 'bg-secondary-light text-secondary-dark hover:bg-emerald-200/90'
                           : 'bg-primary-dark text-white hover:bg-primary'
@@ -369,18 +348,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   )}
                   <Link
                     href="/profile"
-                    className="max-w-[100px] truncate text-xs text-slate-600 hover:text-primary sm:max-w-none sm:text-sm"
+                    className="max-w-[100px] truncate text-xs text-slate-600 hover:text-primary sm:max-w-none"
                     title={user.full_name}
                   >
-                    <span className="hidden md:inline">{user.full_name} </span>
-                    <span className="text-xs">({user.user_type === 'supplier' ? 'Поставщик' : user.user_type === 'customer' ? 'Заказчик' : 'Админ'})</span>
+                    Профиль
                   </Link>
                   <button
                     onClick={handleLogout}
-                    className="rounded-lg bg-rose-800/90 px-2 py-2 text-xs font-medium text-white shadow-sm ring-1 ring-rose-900/20 hover:bg-rose-800 sm:px-4 sm:text-sm"
+                    className="rounded-lg bg-rose-800/90 px-2 py-2 text-xs font-medium text-white shadow-sm ring-1 ring-rose-900/20 hover:bg-rose-800 sm:px-3"
                   >
-                    <span className="hidden sm:inline">Выйти</span>
-                    <span className="sm:hidden">✕</span>
+                    Выйти
                   </button>
                 </div>
               ) : (

@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Применить SQL-патч к БД (локально: из корня репозитория с запущенным docker compose).
+# Применить все SQL-патчи к БД (локально: из корня репозитория с запущенным docker compose).
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SQL="${ROOT}/scripts/sql/patch_users_min_order_amount.sql"
+SQL_DIR="${ROOT}/scripts/sql"
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml}"
 
-if [[ ! -f "${SQL}" ]]; then
-  echo "Missing ${SQL}" >&2
+if [[ ! -d "${SQL_DIR}" ]]; then
+  echo "Missing ${SQL_DIR}" >&2
   exit 1
 fi
 
@@ -19,5 +19,18 @@ else
   exit 1
 fi
 
-compose exec -T db psql -U postgres -d dis_db -v ON_ERROR_STOP=1 < "${SQL}"
-echo "[ensure-min-order] OK"
+found=0
+for sql_file in "${SQL_DIR}"/*.sql; do
+  if [[ -f "${sql_file}" ]]; then
+    found=1
+    echo "[ensure-schema] apply ${sql_file}"
+    compose exec -T db psql -U postgres -d dis_db -v ON_ERROR_STOP=1 < "${sql_file}"
+  fi
+done
+
+if [[ "${found}" -eq 0 ]]; then
+  echo "No SQL patches found in ${SQL_DIR}" >&2
+  exit 1
+fi
+
+echo "[ensure-schema] OK"

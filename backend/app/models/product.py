@@ -14,7 +14,9 @@ class Product(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False, index=True)
     description = Column(Text)
+    category_id = Column(Integer, ForeignKey("categories.id"), nullable=True, index=True)
     category = Column(String, index=True)
+    category_path = Column(String, nullable=True, index=True)  # Полный путь категории (например "Бакалея > Макароны")
     unit = Column(String, nullable=False, default="шт")  # единица измерения - всегда "шт"
     items_per_box = Column(Integer, nullable=True)  # количество штук в коробке
     image_url = Column(String, nullable=True)  # URL изображения товара
@@ -22,6 +24,7 @@ class Product(Base):
     # Связь с поставщиком (пользователь типа supplier)
     supplier_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     supplier = relationship("User", back_populates="products", foreign_keys=[supplier_id])
+    category_ref = relationship("Category", foreign_keys=[category_id])
     
     # Остатки и цены хранятся в таблице Inventory
     

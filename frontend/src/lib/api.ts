@@ -52,6 +52,7 @@ export interface Product {
   name: string;
   description: string | null;
   category: string | null;
+  category_path?: string | null;
   unit: string;
   items_per_box?: number | null;
   image_url?: string | null;
@@ -60,6 +61,15 @@ export interface Product {
 
 export interface CategoriesResponse {
   categories: string[];
+  tree?: Array<{
+    id: number | string;
+    parent_id?: number | null;
+    slug?: string;
+    name?: string;
+    title?: string;
+    children?: string[];
+  }>;
+  category_path_by_leaf?: Record<string, string>;
 }
 
 export interface InventoryItem {
@@ -325,6 +335,7 @@ class ApiClient {
     name: string;
     description?: string;
     category?: string;
+    category_path?: string;
     unit: string;
     items_per_box?: number;
     supplier_id: number;
@@ -342,6 +353,7 @@ class ApiClient {
     name?: string;
     description?: string | null;
     category?: string | null;
+    category_path?: string | null;
     unit?: string;
     items_per_box?: number;
     image_url?: string | null;
@@ -353,6 +365,7 @@ class ApiClient {
     if (productData.name !== undefined) body.name = productData.name;
     if (productData.description !== undefined) body.description = productData.description;
     if (productData.category !== undefined) body.category = productData.category;
+    if (productData.category_path !== undefined) body.category_path = productData.category_path;
     if (productData.unit !== undefined) body.unit = productData.unit;
     if (productData.items_per_box !== undefined) body.items_per_box = productData.items_per_box;
     if (productData.image_url !== undefined) body.image_url = productData.image_url;

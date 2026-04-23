@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { api } from '@/lib/api';
 import { getPublicApiBase } from '@/lib/publicBase';
 import { authService } from '@/lib/auth';
+import { PRODUCT_CATEGORY_TREE, flattenCategoryTree } from '@/lib/productCategoryTree';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
@@ -12,6 +13,7 @@ interface Product {
   name: string;
   description: string | null;
   category: string | null;
+  category_path?: string | null;
   unit: string;
   image_url?: string | null;
   items_per_box?: number | null;
@@ -63,9 +65,16 @@ export default function ProductsPage() {
   const [selectedAvailability, setSelectedAvailability] = useState<string>('all'); // 'all', 'in_stock', 'out_of_stock'
   const [minPrice, setMinPrice] = useState<string>('');
   const [maxPrice, setMaxPrice] = useState<string>('');
+  const [saleOnly, setSaleOnly] = useState(false);
+  const [deliveryOption, setDeliveryOption] = useState<'any' | '1h' | 'today' | 'tomorrow' | '3d' | '7d'>('any');
   
   // Сортировка
   const [sortBy, setSortBy] = useState<string>('name'); // 'name', 'price_asc', 'price_desc', 'quantity_asc', 'quantity_desc', 'popularity_desc'
+  const allCategoryOptions = useMemo(() => {
+    const fromTree = flattenCategoryTree(PRODUCT_CATEGORY_TREE);
+    const unique = new Set<string>([...fromTree, ...categories.filter(Boolean)]);
+    return Array.from(unique).sort((a, b) => a.localeCompare(b, 'ru'));
+  }, [categories]);
 
   // Отслеживаем предыдущий supplier_id из URL для сброса фильтров
   const prevSupplierIdRef = useRef<string | null>(null);
@@ -452,6 +461,18 @@ export default function ProductsPage() {
     }
   });
 
+  const selectedProductsTotal = filteredProducts.reduce((sum, product) => {
+    const selectedQuantity = productQuantities[product.id] ?? 0;
+    if (selectedQuantity <= 0) return sum;
+    const productInventory = inventoryRowForProduct(inventory, product);
+    if (!productInventory) return sum;
+    return sum + selectedQuantity * parseFloat(productInventory.price);
+  }, 0);
+
+  const selectedProductsQuantity = filteredProducts.reduce((sum, product) => (
+    sum + (productQuantities[product.id] ?? 0)
+  ), 0);
+
   if (isLoading && products.length === 0) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -474,129 +495,137 @@ export default function ProductsPage() {
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
         <div className="xl:col-span-2">
-          <div className="bg-slate-100/90 border border-slate-200 rounded-2xl p-4 xl:sticky xl:top-24">
-            {/* Поиск и сортировка */}
-            <div className="space-y-3 mb-6">
-              <div className="rounded-xl bg-white border border-slate-200 p-3">
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Поиск
-                </label>
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Название товара..."
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-primary focus:border-primary"
-                />
-              </div>
-              <div className="rounded-xl bg-white border border-slate-200 p-3">
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Сортировка
-                </label>
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-primary focus:border-primary"
+          <div className="rounded-3xl bg-slate-100 px-4 py-5 shadow-sm xl:sticky xl:top-24">
+            <div className="mb-6">
+              <h3 className="text-3xl font-semibold text-slate-900">Категория</h3>
+              <div className="mt-3 space-y-1">
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategory('')}
+                  className="flex w-full items-center gap-2 rounded-lg px-1 py-1 text-left text-base text-slate-700 hover:bg-slate-200/60"
+                  aria-label="Все категории"
                 >
-                  <option value="name">По названию (А-Я)</option>
-                  <option value="price_asc">По цене (возрастание)</option>
-                  <option value="price_desc">По цене (убывание)</option>
-                  <option value="popularity_desc">По популярности заказов</option>
-                  <option value="quantity_desc">По наличию (больше)</option>
-                  <option value="quantity_asc">По наличию (меньше)</option>
-                </select>
+                  <span className="text-xl text-slate-400">‹</span>
+                  <span>Все категории</span>
+                </button>
+                {PRODUCT_CATEGORY_TREE.map((group) => (
+                  <div key={group.name} className="space-y-1">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCategory(group.name)}
+                      className={`flex w-full items-center gap-2 rounded-lg px-1 py-1 text-left text-base transition-colors ${
+                        selectedCategory === group.name
+                          ? 'bg-blue-100 text-blue-900'
+                          : 'text-slate-700 hover:bg-slate-200/60'
+                      }`}
+                    >
+                      <span className="text-xl text-slate-400">‹</span>
+                      <span className="line-clamp-2">{group.name}</span>
+                    </button>
+                    {group.children?.slice(0, 2).map((child) => (
+                      <button
+                        key={child.name}
+                        type="button"
+                        onClick={() => setSelectedCategory(child.name)}
+                        className={`ml-6 block w-[calc(100%-1.5rem)] rounded-lg px-2 py-1 text-left text-base transition-colors ${
+                          selectedCategory === child.name
+                            ? 'bg-blue-100 text-blue-900'
+                            : 'text-slate-700 hover:bg-slate-200/60'
+                        }`}
+                      >
+                        <span className="line-clamp-2">{child.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                ))}
               </div>
               <button
-                onClick={handleSearch}
-                className="w-full px-4 py-2 bg-primary-dark text-white rounded-xl font-medium hover:bg-primary focus:outline-none focus:ring-2 focus:ring-primary-dark"
+                type="button"
+                onClick={() => setSelectedCategory(selectedCategory || allCategoryOptions[0] || '')}
+                className="mt-3 w-full rounded-xl bg-slate-200 px-3 py-2 text-left text-2xl text-slate-900"
               >
-                Найти
+                {selectedCategory || allCategoryOptions[0] || 'Бакалея'}
               </button>
             </div>
 
-            {/* Фильтры */}
-            <div>
-              <div className="mb-4">
-                <h3 className="text-xl font-bold text-slate-800">Фильтры</h3>
-                <button
-                  type="button"
-                  onClick={resetFilters}
-                  className="mt-2 w-full px-4 py-2 text-sm text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-primary transition-colors"
-                >
-                  Сбросить фильтры
-                </button>
-              </div>
-              <div className="grid grid-cols-1 gap-4">
-                <div className="rounded-xl bg-white border border-slate-200 p-3">
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    Категория
+            <div className="mb-6 flex items-center justify-between">
+              <span className="text-3xl font-semibold text-slate-900">Распродажа</span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={saleOnly}
+                onClick={() => setSaleOnly((v) => !v)}
+                className={`relative h-8 w-14 rounded-full transition-colors ${
+                  saleOnly ? 'bg-blue-600' : 'bg-slate-300'
+                }`}
+              >
+                <span
+                  className={`absolute top-1 h-6 w-6 rounded-full bg-white transition-transform ${
+                    saleOnly ? 'translate-x-7' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+
+            <div className="mb-6">
+              <h4 className="text-3xl font-semibold text-slate-900">Доставка</h4>
+              <div className="mt-3 space-y-2">
+                {[
+                  { value: 'any', label: 'Неважно' },
+                  { value: '1h', label: 'От 1 часа' },
+                  { value: 'today', label: 'Сегодня' },
+                  { value: 'tomorrow', label: 'Завтра' },
+                  { value: '3d', label: 'До 3 дней' },
+                  { value: '7d', label: 'До 7 дней' },
+                ].map((option) => (
+                  <label key={option.value} className="flex items-center gap-3 text-base text-slate-900">
+                    <input
+                      type="radio"
+                      name="delivery"
+                      checked={deliveryOption === option.value}
+                      onChange={() => setDeliveryOption(option.value as 'any' | '1h' | 'today' | 'tomorrow' | '3d' | '7d')}
+                      className="h-5 w-5 accent-blue-600"
+                    />
+                    <span>{option.label}</span>
                   </label>
-                  <select
-                    value={selectedCategory}
-                    onChange={(e) => setSelectedCategory(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-primary focus:border-primary"
-                  >
-                  <option value="">Все категории</option>
-                  {categories.map((category) => (
-                    <option key={category} value={category}>
-                      {category}
-                    </option>
-                  ))}
-                </select>
+                ))}
               </div>
-              <div className="rounded-xl bg-white border border-slate-200 p-3">
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Поставщик
-                </label>
-                <select
-                  value={selectedSupplierId || ''}
-                  onChange={(e) => setSelectedSupplierId(e.target.value ? Number(e.target.value) : null)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-primary focus:border-primary"
-                >
-                  <option value="">Все поставщики</option>
-                  {suppliers.map((supplier) => (
-                    <option key={supplier.id} value={supplier.id}>
-                      {supplier.full_name}
-                    </option>
-                  ))}
-                </select>
+            </div>
+
+            <div>
+              <div className="mb-2 flex items-center gap-2">
+                <h4 className="text-3xl font-semibold text-slate-900">Цена</h4>
+                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-300 text-xs text-slate-600">i</span>
               </div>
-              <div className="rounded-xl bg-white border border-slate-200 p-3">
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Наличие
-                </label>
-                <select
-                  value={selectedAvailability}
-                  onChange={(e) => setSelectedAvailability(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-primary focus:border-primary"
-                >
-                  <option value="all">Все товары</option>
-                  <option value="in_stock">В наличии</option>
-                  <option value="out_of_stock">Нет в наличии</option>
-                </select>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  value={minPrice}
+                  onChange={(e) => setMinPrice(e.target.value)}
+                  placeholder="20"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-base text-slate-900 focus:border-blue-400 focus:outline-none"
+                />
+                <input
+                  type="number"
+                  value={maxPrice}
+                  onChange={(e) => setMaxPrice(e.target.value)}
+                  placeholder="769823"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-base text-slate-900 focus:border-blue-400 focus:outline-none"
+                />
               </div>
-              <div className="rounded-xl bg-white border border-slate-200 p-3">
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Цена (₽)
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="number"
-                    value={minPrice}
-                    onChange={(e) => setMinPrice(e.target.value)}
-                    placeholder="От"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-primary focus:border-primary text-sm"
-                  />
-                  <input
-                    type="number"
-                    value={maxPrice}
-                    onChange={(e) => setMaxPrice(e.target.value)}
-                    placeholder="До"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-primary focus:border-primary text-sm"
-                  />
-                </div>
-              </div>
-              </div>
+              <button
+                type="button"
+                onClick={resetFilters}
+                className="mt-4 w-full rounded-xl bg-white px-3 py-2 text-sm font-medium text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50"
+              >
+                Сбросить фильтры
+              </button>
+            </div>
+
+            <div className="mt-6 rounded-2xl bg-white px-3 py-3 ring-1 ring-slate-200">
+              <p className="text-sm font-semibold text-slate-700">Итог по выбранному списку</p>
+              <p className="mt-1 text-xs text-slate-500">Выбрано: {selectedProductsQuantity} ед.</p>
+              <p className="mt-2 text-lg font-bold text-primary-dark">{selectedProductsTotal.toFixed(2)} ₽</p>
             </div>
           </div>
         </div>
@@ -683,7 +712,8 @@ export default function ProductsPage() {
                     
                     {/* Нижняя часть: управление количеством и кнопка */}
                     {productInventory && parseFloat(productInventory.quantity) > 0 ? (
-                      <div className="flex items-center gap-1.5 flex-wrap">
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                         {itemsPerBox > 1 && (
                           <span className="text-xs text-gray-500 bg-gray-50 px-2 py-0.5 rounded whitespace-nowrap">В уп.: {itemsPerBox} {product.unit}</span>
                         )}
@@ -749,10 +779,11 @@ export default function ProductsPage() {
                         <div className="text-xs font-bold text-primary-dark bg-primary-light px-2 py-0.5 rounded-md whitespace-nowrap">
                           Итого: {selectedQuantity} {product.unit} на сумму {(selectedQuantity * parseFloat(productInventory.price)).toFixed(2)} ₽
                         </div>
+                        </div>
                         <button
                           onClick={() => addToCart(product, selectedQuantity)}
                           disabled={selectedQuantity === 0}
-                          className={`px-3 py-1 rounded-lg text-xs font-bold shadow-md transition-all whitespace-nowrap flex-shrink-0 ${
+                          className={`w-full px-3 py-1 rounded-lg text-xs font-bold shadow-md transition-all ${
                             selectedQuantity === 0
                               ? 'bg-green-200 text-green-800 cursor-not-allowed'
                               : 'bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800 hover:shadow-lg'

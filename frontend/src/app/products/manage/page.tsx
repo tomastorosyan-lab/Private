@@ -25,6 +25,7 @@ interface Product {
   name: string;
   description: string | null;
   category: string | null;
+  category_path?: string | null;
   unit: string;
   items_per_box?: number | null;
   image_url?: string | null;
@@ -45,6 +46,7 @@ interface ProductDraft {
   name: string;
   description: string;
   category: string;
+  category_path: string;
   items_per_box: string;
   quantity: string;
   price: string;
@@ -54,6 +56,7 @@ const emptyDraft = (): ProductDraft => ({
   name: '',
   description: '',
   category: '',
+  category_path: '',
   items_per_box: '',
   quantity: '',
   price: '',
@@ -103,6 +106,7 @@ export default function ManageProductsPage() {
   const dragStateRef = useRef<{ startX: number; startY: number; originX: number; originY: number } | null>(null);
 
   const [categories, setCategories] = useState<string[]>([]);
+  const [categoryPathByLeaf, setCategoryPathByLeaf] = useState<Record<string, string>>({});
 
   const clampCropPosition = (
     x: number,
@@ -279,6 +283,35 @@ export default function ManageProductsPage() {
     try {
       const data = await api.getCategories();
       setCategories(data.categories || []);
+      const map: Record<string, string> = { ...(data.category_path_by_leaf || {}) };
+
+      // Backward compatibility for legacy API tree format: [{ title, children[] }]
+      if (Object.keys(map).length === 0) {
+        (data.tree || []).forEach((section) => {
+          const sectionTitle = section.name || section.title;
+          (section.children || []).forEach((leaf) => {
+            map[leaf] = sectionTitle ? `${sectionTitle} > ${leaf}` : leaf;
+          });
+        });
+      }
+
+      // New API tree format: flat nodes [{ id, parent_id, slug, name }]
+      if (Object.keys(map).length === 0 && Array.isArray(data.tree)) {
+        const nodesById = new Map<number, { name?: string; parent_id?: number | null }>();
+        data.tree.forEach((node) => {
+          if (typeof node.id === 'number') {
+            nodesById.set(node.id, { name: node.name, parent_id: node.parent_id });
+          }
+        });
+        data.categories.forEach((leaf) => {
+          const currentNode = data.tree?.find((node) => node.name === leaf);
+          if (!currentNode || typeof currentNode.id !== 'number') return;
+          const parentNode = nodesById.get(currentNode.parent_id ?? -1);
+          map[leaf] = parentNode?.name ? `${parentNode.name} > ${leaf}` : leaf;
+        });
+      }
+
+      setCategoryPathByLeaf(map);
     } catch (err: any) {
       console.error('Ошибка загрузки категорий:', err);
     }
@@ -370,6 +403,7 @@ export default function ManageProductsPage() {
         name: p.name,
         description: p.description ?? '',
         category: p.category ?? '',
+        category_path: p.category_path ?? '',
         items_per_box: p.items_per_box != null ? String(p.items_per_box) : '',
         quantity: inv ? String(Math.floor(parseFloat(String(inv.quantity)))) : '',
         price: inv ? String(inv.price).replace(',', '.') : '',
@@ -398,6 +432,7 @@ export default function ManageProductsPage() {
         name: draft.name.trim(),
         description: draft.description.trim() || undefined,
         category: draft.category || undefined,
+        category_path: draft.category ? (categoryPathByLeaf[draft.category] || draft.category) : undefined,
         unit: 'шт',
         items_per_box: draft.items_per_box ? parseInt(draft.items_per_box, 10) : undefined,
         supplier_id: user.id,
@@ -495,6 +530,10 @@ export default function ManageProductsPage() {
         name: draft.name.trim(),
         description: draft.description,
         category: draft.category === '' ? null : draft.category,
+        category_path:
+          draft.category === ''
+            ? null
+            : (categoryPathByLeaf[draft.category] || draft.category),
         unit: 'шт',
         items_per_box: draft.items_per_box
           ? parseInt(draft.items_per_box, 10)
@@ -627,7 +666,7 @@ export default function ManageProductsPage() {
                     <option value="">Выберите категорию</option>
                     {categories.map((cat) => (
                       <option key={cat} value={cat}>
-                        {cat}
+                        {categoryPathByLeaf[cat] || cat}
                       </option>
                     ))}
                   </select>

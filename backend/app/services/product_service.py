@@ -7,16 +7,47 @@ from typing import List, Optional
 from decimal import Decimal
 from datetime import datetime, timezone
 from app.models.product import Product
+from app.models.category import Category
 from app.models.inventory import Inventory
 from app.schemas.product import ProductResponse, ProductSearch, ProductCreate, ProductUpdate
 from app.core.exceptions import NotFoundException, ForbiddenException, BusinessLogicException
 from app.models.user import User, UserType
+from app.core.categories import CATEGORY_PATH_BY_LEAF, sync_categories_to_db
 
 
 class ProductService:
     def __init__(self, db: Session):
         self.db = db
     
+    def _resolve_category_data(
+        self,
+        category_id: Optional[int],
+        category_name: Optional[str],
+    ) -> tuple[Optional[int], Optional[str], Optional[str]]:
+        """
+        Приводит категорию к консистентному виду:
+        - category_id
+        - category (leaf name)
+        - category_path
+        """
+        sync_categories_to_db(self.db)
+        if category_id is not None:
+            row = self.db.query(Category).filter(Category.id == category_id, Category.is_active == True).first()
+            if not row:
+                raise BusinessLogicException(f"Категория с ID {category_id} не найдена")
+            name = row.name
+            return row.id, name, CATEGORY_PATH_BY_LEAF.get(name, name)
+
+        if category_name:
+            row = self.db.query(Category).filter(Category.name == category_name, Category.is_active == True).first()
+            if row:
+                name = row.name
+                return row.id, name, CATEGORY_PATH_BY_LEAF.get(name, name)
+            # fallback для обратной совместимости
+            return None, category_name, CATEGORY_PATH_BY_LEAF.get(category_name, category_name)
+
+        return None, None, None
+
     async def get_products(
         self,
         skip: int = 0,
@@ -88,11 +119,20 @@ class ProductService:
         new_product = Product(
             name=product_data.name,
             description=product_data.description,
-            category=product_data.category,
+            category=None,
+            category_path=None,
+            category_id=None,
             unit=product_data.unit or "шт",  # По умолчанию "шт"
             items_per_box=product_data.items_per_box,
             supplier_id=supplier_id
         )
+        resolved_id, resolved_name, resolved_path = self._resolve_category_data(
+            product_data.category_id,
+            product_data.category,
+        )
+        new_product.category_id = resolved_id
+        new_product.category = resolved_name
+        new_product.category_path = product_data.category_path or resolved_path
         
         self.db.add(new_product)
         self.db.commit()
@@ -143,6 +183,19 @@ class ProductService:
             product.description = payload["description"] or None
         if "category" in payload:
             product.category = payload["category"] or None
+        if "category_id" in payload:
+            product.category_id = payload["category_id"]
+        if "category_path" in payload:
+            product.category_path = payload["category_path"] or None
+        if "category_id" in payload or "category" in payload:
+            resolved_id, resolved_name, resolved_path = self._resolve_category_data(
+                payload.get("category_id"),
+                payload.get("category"),
+            )
+            product.category_id = resolved_id
+            product.category = resolved_name
+            if payload.get("category_path") is None:
+                product.category_path = resolved_path
         if "unit" in payload and payload["unit"] is not None:
             product.unit = payload["unit"] or "шт"
         if "items_per_box" in payload:

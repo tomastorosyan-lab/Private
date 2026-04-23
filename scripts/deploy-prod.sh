@@ -42,11 +42,12 @@ find "${BACKUP_DIR}" -type f -mtime +14 -delete
 echo "[deploy] Build and restart containers"
 compose up -d --build
 
-# Колонка min_order_amount сразу после подъёма БД (ORM в новом backend ожидает колонку).
-if [[ -f "${APP_DIR}/scripts/sql/patch_users_min_order_amount.sql" ]]; then
-  echo "[deploy] Apply SQL patch: min_order_amount on users"
-  compose exec -T db psql -U postgres -d dis_db -v ON_ERROR_STOP=1 \
-    < "${APP_DIR}/scripts/sql/patch_users_min_order_amount.sql"
+# Применяем idempotent SQL-патчи схемы перед запуском backend-операций.
+if ls "${APP_DIR}/scripts/sql/"*.sql >/dev/null 2>&1; then
+  for sql_file in "${APP_DIR}"/scripts/sql/*.sql; do
+    echo "[deploy] Apply SQL patch: ${sql_file}"
+    compose exec -T db psql -U postgres -d dis_db -v ON_ERROR_STOP=1 < "${sql_file}"
+  done
 fi
 
 # Отдельно пересобираем фронт без кэша — иначе Docker иногда оставляет старый слой Next.js и «изменений не видно».
