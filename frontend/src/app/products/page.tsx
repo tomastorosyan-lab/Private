@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { api } from '@/lib/api';
 import { getPublicApiBase } from '@/lib/publicBase';
 import { authService } from '@/lib/auth';
@@ -93,6 +93,17 @@ export default function ProductsPage() {
         : [...prev, groupName]
     ));
   };
+
+  const effectiveCategoryFilter = useMemo(() => {
+    if (!selectedCategory) return null;
+    const selectedGroup = PRODUCT_CATEGORY_TREE.find((group) => group.name === selectedCategory);
+    if (!selectedGroup) {
+      return new Set<string>([selectedCategory]);
+    }
+    const allowed = new Set<string>([selectedGroup.name]);
+    (selectedGroup.children || []).forEach((child) => allowed.add(child.name));
+    return allowed;
+  }, [selectedCategory]);
 
   const loadData = useCallback(async () => {
     try {
@@ -408,8 +419,11 @@ export default function ProductsPage() {
     }
     
     // Фильтр по категории
-    if (selectedCategory && product.category !== selectedCategory) {
-      return false;
+    if (effectiveCategoryFilter) {
+      const productCategory = product.category || '';
+      if (!effectiveCategoryFilter.has(productCategory)) {
+        return false;
+      }
     }
     
     // Фильтр по наличию
