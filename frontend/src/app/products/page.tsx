@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { api } from '@/lib/api';
 import { getPublicApiBase } from '@/lib/publicBase';
 import { authService } from '@/lib/auth';
-import { PRODUCT_CATEGORY_TREE, flattenCategoryTree } from '@/lib/productCategoryTree';
+import { PRODUCT_CATEGORY_TREE } from '@/lib/productCategoryTree';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
@@ -60,22 +60,15 @@ export default function ProductsPage() {
   const [selectedProductForDescription, setSelectedProductForDescription] = useState<Product | null>(null);
   
   // Фильтры
-  const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [selectedAvailability, setSelectedAvailability] = useState<string>('all'); // 'all', 'in_stock', 'out_of_stock'
   const [minPrice, setMinPrice] = useState<string>('');
   const [maxPrice, setMaxPrice] = useState<string>('');
-  const [saleOnly, setSaleOnly] = useState(false);
   const [deliveryOption, setDeliveryOption] = useState<'any' | '1h' | 'today' | 'tomorrow' | '3d' | '7d'>('any');
+  const [expandedCategoryGroups, setExpandedCategoryGroups] = useState<string[]>([]);
   
   // Сортировка
   const [sortBy, setSortBy] = useState<string>('name'); // 'name', 'price_asc', 'price_desc', 'quantity_asc', 'quantity_desc', 'popularity_desc'
-  const allCategoryOptions = useMemo(() => {
-    const fromTree = flattenCategoryTree(PRODUCT_CATEGORY_TREE);
-    const unique = new Set<string>([...fromTree, ...categories.filter(Boolean)]);
-    return Array.from(unique).sort((a, b) => a.localeCompare(b, 'ru'));
-  }, [categories]);
-
   // Отслеживаем предыдущий supplier_id из URL для сброса фильтров
   const prevSupplierIdRef = useRef<string | null>(null);
 
@@ -93,6 +86,14 @@ export default function ProductsPage() {
     prevSupplierIdRef.current = null;
   };
 
+  const toggleCategoryGroup = (groupName: string) => {
+    setExpandedCategoryGroups((prev) => (
+      prev.includes(groupName)
+        ? prev.filter((name) => name !== groupName)
+        : [...prev, groupName]
+    ));
+  };
+
   const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -100,15 +101,13 @@ export default function ProductsPage() {
       const supplierIdParam = searchParams.get('supplier_id');
       const supplierId = supplierIdParam ? Number(supplierIdParam) : undefined;
 
-      const [productsData, suppliersData, categoriesData, ordersData] = await Promise.all([
+      const [productsData, suppliersData, ordersData] = await Promise.all([
         api.getProducts({ limit: 1000, supplier_id: supplierId }),
         api.getDistributors({ limit: 100 }),
-        api.getCategories().catch(() => ({ categories: [] })),
         api.getOrders({ limit: 1000 }).catch(() => []),
       ]);
       setProducts(productsData);
       setSuppliers(suppliersData);
-      setCategories(categoriesData.categories || []);
 
       const popularityMap: Record<number, number> = {};
       (ordersData as any[]).forEach((order) => {
@@ -220,6 +219,17 @@ export default function ProductsPage() {
       }
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    if (!selectedCategory) return;
+    const selectedGroup = PRODUCT_CATEGORY_TREE.find(
+      (group) => group.name === selectedCategory || (group.children || []).some((child) => child.name === selectedCategory)
+    );
+    if (!selectedGroup) return;
+    setExpandedCategoryGroups((prev) => (
+      prev.includes(selectedGroup.name) ? prev : [...prev, selectedGroup.name]
+    ));
+  }, [selectedCategory]);
 
   const handleSearch = async () => {
     try {
@@ -461,18 +471,6 @@ export default function ProductsPage() {
     }
   });
 
-  const selectedProductsTotal = filteredProducts.reduce((sum, product) => {
-    const selectedQuantity = productQuantities[product.id] ?? 0;
-    if (selectedQuantity <= 0) return sum;
-    const productInventory = inventoryRowForProduct(inventory, product);
-    if (!productInventory) return sum;
-    return sum + selectedQuantity * parseFloat(productInventory.price);
-  }, 0);
-
-  const selectedProductsQuantity = filteredProducts.reduce((sum, product) => (
-    sum + (productQuantities[product.id] ?? 0)
-  ), 0);
-
   if (isLoading && products.length === 0) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -510,61 +508,54 @@ export default function ProductsPage() {
                 </button>
                 {PRODUCT_CATEGORY_TREE.map((group) => (
                   <div key={group.name} className="space-y-1">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedCategory(group.name)}
-                      className={`flex w-full items-center gap-2 rounded-lg px-1 py-1 text-left text-base transition-colors ${
-                        selectedCategory === group.name
-                          ? 'bg-blue-100 text-blue-900'
-                          : 'text-slate-700 hover:bg-slate-200/60'
-                      }`}
-                    >
-                      <span className="text-xl text-slate-400">‹</span>
-                      <span className="line-clamp-2">{group.name}</span>
-                    </button>
-                    {group.children?.slice(0, 2).map((child) => (
+                    <div className="flex items-center gap-1">
                       <button
-                        key={child.name}
                         type="button"
-                        onClick={() => setSelectedCategory(child.name)}
-                        className={`ml-6 block w-[calc(100%-1.5rem)] rounded-lg px-2 py-1 text-left text-base transition-colors ${
-                          selectedCategory === child.name
+                        onClick={() => toggleCategoryGroup(group.name)}
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-200/60"
+                        aria-label={expandedCategoryGroups.includes(group.name) ? `Свернуть ${group.name}` : `Развернуть ${group.name}`}
+                      >
+                        <span
+                          className={`text-sm transition-transform ${
+                            expandedCategoryGroups.includes(group.name) ? 'rotate-90' : ''
+                          }`}
+                        >
+                          ▶
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedCategory(group.name)}
+                        className={`flex-1 rounded-lg px-2 py-1 text-left text-base transition-colors ${
+                          selectedCategory === group.name
                             ? 'bg-blue-100 text-blue-900'
                             : 'text-slate-700 hover:bg-slate-200/60'
                         }`}
                       >
-                        <span className="line-clamp-2">{child.name}</span>
+                        <span className="line-clamp-2">{group.name}</span>
                       </button>
-                    ))}
+                    </div>
+                    {expandedCategoryGroups.includes(group.name) && (
+                      <div className="ml-8 space-y-1">
+                        {group.children?.map((child) => (
+                          <button
+                            key={child.name}
+                            type="button"
+                            onClick={() => setSelectedCategory(child.name)}
+                            className={`block w-full rounded-lg px-2 py-1 text-left text-sm transition-colors ${
+                              selectedCategory === child.name
+                                ? 'bg-blue-100 text-blue-900'
+                                : 'text-slate-700 hover:bg-slate-200/60'
+                            }`}
+                          >
+                            <span className="line-clamp-2">{child.name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
-              <button
-                type="button"
-                onClick={() => setSelectedCategory(selectedCategory || allCategoryOptions[0] || '')}
-                className="mt-3 w-full rounded-xl bg-slate-200 px-3 py-2 text-left text-2xl text-slate-900"
-              >
-                {selectedCategory || allCategoryOptions[0] || 'Бакалея'}
-              </button>
-            </div>
-
-            <div className="mb-6 flex items-center justify-between">
-              <span className="text-3xl font-semibold text-slate-900">Распродажа</span>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={saleOnly}
-                onClick={() => setSaleOnly((v) => !v)}
-                className={`relative h-8 w-14 rounded-full transition-colors ${
-                  saleOnly ? 'bg-blue-600' : 'bg-slate-300'
-                }`}
-              >
-                <span
-                  className={`absolute top-1 h-6 w-6 rounded-full bg-white transition-transform ${
-                    saleOnly ? 'translate-x-7' : 'translate-x-1'
-                  }`}
-                />
-              </button>
             </div>
 
             <div className="mb-6">
@@ -622,11 +613,6 @@ export default function ProductsPage() {
               </button>
             </div>
 
-            <div className="mt-6 rounded-2xl bg-white px-3 py-3 ring-1 ring-slate-200">
-              <p className="text-sm font-semibold text-slate-700">Итог по выбранному списку</p>
-              <p className="mt-1 text-xs text-slate-500">Выбрано: {selectedProductsQuantity} ед.</p>
-              <p className="mt-2 text-lg font-bold text-primary-dark">{selectedProductsTotal.toFixed(2)} ₽</p>
-            </div>
           </div>
         </div>
 
