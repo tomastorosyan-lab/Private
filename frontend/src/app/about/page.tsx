@@ -1,166 +1,122 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { authService } from '@/lib/auth';
+import { useEffect } from 'react';
 
 export default function AboutPage() {
+  const router = useRouter();
+  const isAuthenticated = authService.isAuthenticated();
+  const user = authService.getUser();
+
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      if (user.user_type === 'supplier') {
+        router.push('/products/manage');
+      } else if (user.user_type === 'customer') {
+        router.push('/products');
+      }
+    }
+  }, [isAuthenticated, user, router]);
+
   return (
-    <div className="mx-auto max-w-6xl space-y-12">
-      <header className="pt-2 text-center sm:pt-4">
+    <div className="space-y-10 sm:space-y-12">
+      <header className="mx-auto max-w-3xl text-center">
         <h1 className="text-display font-semibold tracking-tight text-slate-900 text-balance sm:text-display-lg">
-          Как работает абхазхаб
+          абхазхаб — агрегатор поставщиков
         </h1>
         <p className="mt-4 text-base leading-relaxed text-slate-600 sm:text-lg">
-          Простой и удобный процесс заказа товаров от поставщиков
+          B2B-платформа для закупок: каталог, заказы и поставщики в одном интерфейсе для
+          магазинов и ресторанов.
         </p>
       </header>
 
-      {/* Инфографика процесса */}
-      <div className="surface-card p-6 sm:p-8">
-        <div className="space-y-12">
-          {/* Шаг 1 */}
-          <div className="flex flex-col md:flex-row items-center gap-8">
-            <div className="flex-shrink-0">
-              <div className="w-24 h-24 bg-primary-light rounded-full flex items-center justify-center">
-                <span className="text-4xl">1</span>
-              </div>
-            </div>
-            <div className="flex-1 text-center md:text-left">
-              <h3 className="mb-3 text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">
-                Заказчик выбирает товары
-              </h3>
-              <p className="text-base leading-relaxed text-slate-600 sm:text-lg">
-                Заказчик просматривает каталог товаров от разных поставщиков, 
-                сравнивает цены и остатки, формирует корзину с товарами от одного или нескольких поставщиков.
-              </p>
-            </div>
-            <div className="flex-shrink-0">
-              <div className="w-32 h-32 bg-secondary-light rounded-lg flex items-center justify-center">
-                <span className="text-5xl">🛒</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Стрелка */}
-          <div className="flex justify-center">
-            <div className="w-1 h-16 bg-primary rounded-full"></div>
-          </div>
-
-          {/* Шаг 2 */}
-          <div className="flex flex-col md:flex-row-reverse items-center gap-8">
-            <div className="flex-shrink-0">
-              <div className="w-24 h-24 bg-primary-light rounded-full flex items-center justify-center">
-                <span className="text-4xl">2</span>
-              </div>
-            </div>
-            <div className="flex-1 text-center md:text-right">
-              <h3 className="mb-3 text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">
-                абхазхаб формирует заказы
-              </h3>
-              <p className="text-base leading-relaxed text-slate-600 sm:text-lg">
-                Наш сервис автоматически группирует товары по поставщикам и формирует отдельные заказы 
-                для каждого поставщика. Заказы отправляются поставщикам в удобном формате.
-              </p>
-            </div>
-            <div className="flex-shrink-0">
-              <div className="w-32 h-32 bg-secondary-light rounded-lg flex items-center justify-center">
-                <span className="text-5xl">📋</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Стрелка */}
-          <div className="flex justify-center">
-            <div className="w-1 h-16 bg-primary rounded-full"></div>
-          </div>
-
-          {/* Шаг 3 */}
-          <div className="flex flex-col md:flex-row items-center gap-8">
-            <div className="flex-shrink-0">
-              <div className="w-24 h-24 bg-primary-light rounded-full flex items-center justify-center">
-                <span className="text-4xl">3</span>
-              </div>
-            </div>
-            <div className="flex-1 text-center md:text-left">
-              <h3 className="mb-3 text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">
-                Поставщик получает заказ
-              </h3>
-              <p className="text-base leading-relaxed text-slate-600 sm:text-lg">
-                Поставщик видит входящий заказ в своем личном кабинете, 
-                может принять или отклонить заказ, а также добавить примечания.
-              </p>
-            </div>
-            <div className="flex-shrink-0">
-              <div className="w-32 h-32 bg-secondary-light rounded-lg flex items-center justify-center">
-                <span className="text-5xl">📨</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Стрелка */}
-          <div className="flex justify-center">
-            <div className="w-1 h-16 bg-primary rounded-full"></div>
-          </div>
-
-          {/* Шаг 4 */}
-          <div className="flex flex-col md:flex-row-reverse items-center gap-8">
-            <div className="flex-shrink-0">
-              <div className="w-24 h-24 bg-primary-light rounded-full flex items-center justify-center">
-                <span className="text-4xl">4</span>
-              </div>
-            </div>
-            <div className="flex-1 text-center md:text-right">
-              <h3 className="mb-3 text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">
-                Доставка товара
-              </h3>
-              <p className="text-base leading-relaxed text-slate-600 sm:text-lg">
-                Поставщик собирает заказ и доставляет товар заказчику по указанному адресу. 
-                Заказчик отслеживает статус доставки в своем личном кабинете.
-              </p>
-            </div>
-            <div className="flex-shrink-0">
-              <div className="w-32 h-32 bg-secondary-light rounded-lg flex items-center justify-center">
-                <span className="text-5xl">🚚</span>
-              </div>
+      {isAuthenticated ? (
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-3 md:gap-6">
+          <Link href="/products" className="surface-card-hover group block p-6">
+            <h2 className="mb-2 text-lg font-semibold tracking-tight text-slate-900 group-hover:text-primary-dark">
+              Каталог товаров
+            </h2>
+            <p className="text-sm leading-relaxed text-slate-600">
+              Просмотр и поиск товаров от разных поставщиков
+            </p>
+          </Link>
+          <Link href="/orders" className="surface-card-hover group block p-6">
+            <h2 className="mb-2 text-lg font-semibold tracking-tight text-slate-900 group-hover:text-primary-dark">
+              Мои заказы
+            </h2>
+            <p className="text-sm leading-relaxed text-slate-600">
+              Просмотр и управление вашими заказами
+            </p>
+          </Link>
+          <Link href="/distributors" className="surface-card-hover group block p-6">
+            <h2 className="mb-2 text-lg font-semibold tracking-tight text-slate-900 group-hover:text-primary-dark">
+              Поставщики
+            </h2>
+            <p className="text-sm leading-relaxed text-slate-600">
+              Список доступных поставщиков
+            </p>
+          </Link>
+        </div>
+      ) : (
+        <div className="mx-auto max-w-md text-center">
+          <div className="surface-card p-8 sm:p-10">
+            <h2 className="text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">
+              Вход в рабочую среду
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed text-slate-600 sm:text-base">
+              Войдите или зарегистрируйтесь, чтобы работать с каталогом и заказами.
+            </p>
+            <div className="mt-8 space-y-3">
+              <Link
+                href="/login"
+                className="block w-full rounded-lg bg-primary-dark px-4 py-2.5 text-center text-sm font-medium text-white shadow-surface transition-colors hover:bg-primary"
+              >
+                Войти
+              </Link>
+              <Link
+                href="/register"
+                className="block w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-center text-sm font-medium text-slate-800 shadow-surface transition-colors hover:border-slate-300 hover:bg-slate-50"
+              >
+                Регистрация
+              </Link>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Преимущества */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="surface-card p-6 text-center">
-          <div className="text-4xl mb-4">⚡</div>
-          <h3 className="mb-2 text-lg font-semibold tracking-tight text-slate-900">Быстро</h3>
-          <p className="text-sm leading-relaxed text-slate-600 sm:text-base">
-            Автоматическое формирование заказов экономит время
-          </p>
-        </div>
-        <div className="surface-card p-6 text-center">
-          <div className="text-4xl mb-4">🎯</div>
-          <h3 className="mb-2 text-lg font-semibold tracking-tight text-slate-900">Удобно</h3>
-          <p className="text-sm leading-relaxed text-slate-600 sm:text-base">
-            Один сервис для работы со всеми поставщиками
-          </p>
-        </div>
-        <div className="surface-card p-6 text-center">
-          <div className="text-4xl mb-4">📊</div>
-          <h3 className="mb-2 text-lg font-semibold tracking-tight text-slate-900">Прозрачно</h3>
-          <p className="text-sm leading-relaxed text-slate-600 sm:text-base">
-            Отслеживание статусов заказов в реальном времени
-          </p>
-        </div>
-      </div>
-
-      {/* Кнопка возврата */}
-      <div className="text-center">
-        <Link
-          href="/products"
-          className="inline-block rounded-lg bg-primary-dark px-6 py-3 text-sm font-medium text-white shadow-surface transition-colors hover:bg-primary"
-        >
-          Перейти в каталог
-        </Link>
-      </div>
+      <section className="surface-card p-6 sm:p-8">
+        <h3 className="text-base font-semibold tracking-tight text-slate-900 sm:text-lg">
+          Возможности платформы
+        </h3>
+        <ul className="mt-5 grid grid-cols-1 gap-3 text-sm text-slate-600 sm:grid-cols-2 sm:gap-4 sm:text-[0.9375rem]">
+          <li className="flex gap-2.5">
+            <span className="mt-0.5 shrink-0 font-semibold text-secondary" aria-hidden>
+              ✓
+            </span>
+            <span>Поиск товаров от множества поставщиков</span>
+          </li>
+          <li className="flex gap-2.5">
+            <span className="mt-0.5 shrink-0 font-semibold text-secondary" aria-hidden>
+              ✓
+            </span>
+            <span>Сравнение цен и остатков</span>
+          </li>
+          <li className="flex gap-2.5">
+            <span className="mt-0.5 shrink-0 font-semibold text-secondary" aria-hidden>
+              ✓
+            </span>
+            <span>Удобное создание и отслеживание заказов</span>
+          </li>
+          <li className="flex gap-2.5">
+            <span className="mt-0.5 shrink-0 font-semibold text-secondary" aria-hidden>
+              ✓
+            </span>
+            <span>Интеграция с системами учёта</span>
+          </li>
+        </ul>
+      </section>
     </div>
   );
 }
-
