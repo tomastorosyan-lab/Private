@@ -9,6 +9,7 @@ from app.core.database import get_db
 from app.core.security import create_access_token
 from app.core.config import settings
 from app.core.dependencies import get_current_user as get_current_user_dep
+from app.core.permissions import require_admin
 from app.core.upload import save_uploaded_file, delete_file
 from app.schemas.auth import Token, UserCreate, UserResponse, UserUpdate
 from app.services.auth_service import AuthService
@@ -217,4 +218,53 @@ async def delete_logo(
     # Обновляем профиль пользователя
     user_update = UserUpdate(logo_url="")
     return await service.update_user(current_user.id, user_update)
+
+
+@router.get(
+    "/users",
+    response_model=list[UserResponse],
+    summary="Список пользователей (admin)",
+    tags=["Аутентификация"],
+)
+async def get_users_admin(
+    skip: int = 0,
+    limit: int = 200,
+    search: str | None = None,
+    _: User = Depends(require_admin()),
+    db: Session = Depends(get_db),
+):
+    service = AuthService(db)
+    return await service.get_users(skip=skip, limit=limit, search=search)
+
+
+@router.patch(
+    "/users/{user_id}",
+    response_model=UserResponse,
+    summary="Обновление пользователя (admin)",
+    tags=["Аутентификация"],
+)
+async def update_user_admin(
+    user_id: int,
+    user_update: UserUpdate,
+    _: User = Depends(require_admin()),
+    db: Session = Depends(get_db),
+):
+    service = AuthService(db)
+    return await service.update_user(user_id, user_update)
+
+
+@router.delete(
+    "/users/{user_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Удаление пользователя (admin)",
+    tags=["Аутентификация"],
+)
+async def delete_user_admin(
+    user_id: int,
+    current_user: User = Depends(require_admin()),
+    db: Session = Depends(get_db),
+):
+    service = AuthService(db)
+    await service.delete_user_hard(user_id=user_id, current_user_id=current_user.id)
+    return None
 

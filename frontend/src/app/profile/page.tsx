@@ -56,6 +56,18 @@ export default function ProfilePage() {
   const [success, setSuccess] = useState('');
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [adminUsers, setAdminUsers] = useState<User[]>([]);
+  const [adminSearch, setAdminSearch] = useState('');
+  const [adminSelectedUser, setAdminSelectedUser] = useState<User | null>(null);
+  const [adminForm, setAdminForm] = useState({
+    email: '',
+    full_name: '',
+    password: '',
+    description: '',
+    contact_phone: '',
+    delivery_address: '',
+    min_order_amount: '',
+  });
 
   const [formData, setFormData] = useState({
     email: '',
@@ -102,10 +114,83 @@ export default function ProfilePage() {
       } else {
         setLogoPreview(null);
       }
+      if (userData.user_type === 'admin') {
+        await loadAdminUsers();
+      }
     } catch (err: any) {
       setError(err.message || 'Ошибка загрузки профиля');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadAdminUsers = async (searchValue: string = adminSearch) => {
+    try {
+      const users = await api.getUsers({ limit: 500, search: searchValue || undefined });
+      setAdminUsers(users);
+    } catch (err: any) {
+      setError(err.message || 'Ошибка загрузки списка пользователей');
+    }
+  };
+
+  const startAdminEdit = (target: User) => {
+    setAdminSelectedUser(target);
+    setAdminForm({
+      email: target.email || '',
+      full_name: target.full_name || '',
+      password: '',
+      description: target.description || '',
+      contact_phone: target.contact_phone || '',
+      delivery_address: target.delivery_address || '',
+      min_order_amount:
+        target.min_order_amount != null && String(target.min_order_amount).trim() !== ''
+          ? String(target.min_order_amount).replace(',', '.')
+          : '0',
+    });
+  };
+
+  const saveAdminUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adminSelectedUser) return;
+    try {
+      const payload: any = {
+        email: adminForm.email.trim(),
+        full_name: adminForm.full_name.trim(),
+        description: adminForm.description || null,
+        contact_phone: adminForm.contact_phone || null,
+        delivery_address: adminForm.delivery_address || null,
+      };
+      if (adminForm.password.trim()) {
+        payload.password = adminForm.password.trim();
+      }
+      if (adminSelectedUser.user_type === 'supplier') {
+        const min = parseFloat(adminForm.min_order_amount.trim().replace(',', '.') || '0');
+        if (!Number.isFinite(min) || min < 0) {
+          setError('Минимальная сумма заказа должна быть неотрицательным числом');
+          return;
+        }
+        payload.min_order_amount = min;
+      }
+      await api.updateUserByAdmin(adminSelectedUser.id, payload);
+      setSuccess(`Пользователь ${adminSelectedUser.email} обновлен`);
+      setAdminSelectedUser(null);
+      await loadAdminUsers();
+    } catch (err: any) {
+      setError(err.message || 'Ошибка обновления пользователя');
+    }
+  };
+
+  const deleteAdminUser = async (target: User) => {
+    if (!confirm(`Удалить пользователя ${target.email}?`)) return;
+    try {
+      await api.deleteUserByAdmin(target.id);
+      setSuccess(`Пользователь ${target.email} удален`);
+      if (adminSelectedUser?.id === target.id) {
+        setAdminSelectedUser(null);
+      }
+      await loadAdminUsers();
+    } catch (err: any) {
+      setError(err.message || 'Ошибка удаления пользователя');
     }
   };
 
@@ -603,6 +688,85 @@ export default function ProfilePage() {
           </div>
         </form>
       </div>
+
+      {user.user_type === 'admin' && (
+        <div className="bg-white shadow rounded-lg p-6 space-y-4">
+          <h2 className="text-xl font-semibold text-gray-900">Управление пользователями</h2>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={adminSearch}
+              onChange={(e) => setAdminSearch(e.target.value)}
+              placeholder="Поиск по email или имени"
+              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm"
+            />
+            <button
+              type="button"
+              onClick={() => loadAdminUsers(adminSearch)}
+              className="px-4 py-2 rounded-md text-sm font-medium text-white bg-primary hover:bg-primary-dark"
+            >
+              Найти
+            </button>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b">
+                  <th className="py-2 text-left">ID</th>
+                  <th className="py-2 text-left">Email</th>
+                  <th className="py-2 text-left">Имя</th>
+                  <th className="py-2 text-left">Роль</th>
+                  <th className="py-2 text-right">Действия</th>
+                </tr>
+              </thead>
+              <tbody>
+                {adminUsers.map((u) => (
+                  <tr key={u.id} className="border-b">
+                    <td className="py-2">{u.id}</td>
+                    <td className="py-2">{u.email}</td>
+                    <td className="py-2">{u.full_name}</td>
+                    <td className="py-2">{u.user_type}</td>
+                    <td className="py-2 text-right space-x-3">
+                      <button type="button" className="text-primary hover:underline" onClick={() => startAdminEdit(u)}>
+                        Редактировать
+                      </button>
+                      <button type="button" className="text-red-600 hover:underline" onClick={() => deleteAdminUser(u)}>
+                        Удалить
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {adminSelectedUser && (
+            <form onSubmit={saveAdminUser} className="space-y-3 rounded-lg border border-gray-200 p-4">
+              <h3 className="font-medium text-gray-900">Редактирование: {adminSelectedUser.email}</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <input className="px-3 py-2 border border-gray-300 rounded-md text-sm" value={adminForm.email} onChange={(e) => setAdminForm({ ...adminForm, email: e.target.value })} placeholder="Email" />
+                <input className="px-3 py-2 border border-gray-300 rounded-md text-sm" value={adminForm.full_name} onChange={(e) => setAdminForm({ ...adminForm, full_name: e.target.value })} placeholder="Имя" />
+                <input type="password" className="px-3 py-2 border border-gray-300 rounded-md text-sm" value={adminForm.password} onChange={(e) => setAdminForm({ ...adminForm, password: e.target.value })} placeholder="Новый пароль (опц.)" />
+                <input className="px-3 py-2 border border-gray-300 rounded-md text-sm" value={adminForm.contact_phone} onChange={(e) => setAdminForm({ ...adminForm, contact_phone: e.target.value })} placeholder="Телефон" />
+                <input className="px-3 py-2 border border-gray-300 rounded-md text-sm md:col-span-2" value={adminForm.delivery_address} onChange={(e) => setAdminForm({ ...adminForm, delivery_address: e.target.value })} placeholder="Адрес доставки" />
+                <textarea className="px-3 py-2 border border-gray-300 rounded-md text-sm md:col-span-2" value={adminForm.description} onChange={(e) => setAdminForm({ ...adminForm, description: e.target.value })} placeholder="Описание" rows={3} />
+                {adminSelectedUser.user_type === 'supplier' && (
+                  <input type="number" min={0} step="0.01" className="px-3 py-2 border border-gray-300 rounded-md text-sm" value={adminForm.min_order_amount} onChange={(e) => setAdminForm({ ...adminForm, min_order_amount: e.target.value })} placeholder="Минимальная сумма заказа" />
+                )}
+              </div>
+              <div className="flex justify-end gap-2">
+                <button type="button" className="px-3 py-2 text-sm rounded-md border border-gray-300" onClick={() => setAdminSelectedUser(null)}>
+                  Отмена
+                </button>
+                <button type="submit" className="px-3 py-2 text-sm rounded-md bg-primary text-white hover:bg-primary-dark">
+                  Сохранить
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -60,19 +60,20 @@ export default function ProductsPage() {
   const [selectedSupplierId, setSelectedSupplierId] = useState<number | null>(null);
   const [selectedProductForDescription, setSelectedProductForDescription] = useState<Product | null>(null);
   const [categoryIdsByName, setCategoryIdsByName] = useState<Record<string, number>>({});
+  const [isSupplierDropdownOpen, setIsSupplierDropdownOpen] = useState(false);
   
   // Фильтры
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [selectedAvailability, setSelectedAvailability] = useState<string>('all'); // 'all', 'in_stock', 'out_of_stock'
   const [minPrice, setMinPrice] = useState<string>('');
   const [maxPrice, setMaxPrice] = useState<string>('');
-  const [deliveryOption, setDeliveryOption] = useState<'any' | '1h' | 'today' | 'tomorrow' | '3d' | '7d'>('any');
   const [expandedCategoryGroups, setExpandedCategoryGroups] = useState<string[]>([]);
   
   // Сортировка
   const [sortBy, setSortBy] = useState<string>('name'); // 'name', 'price_asc', 'price_desc', 'quantity_asc', 'quantity_desc', 'popularity_desc'
   // Отслеживаем предыдущий supplier_id из URL для сброса фильтров
   const prevSupplierIdRef = useRef<string | null>(null);
+  const supplierDropdownRef = useRef<HTMLDivElement | null>(null);
 
   // Функция сброса всех фильтров
   const resetFilters = () => {
@@ -236,6 +237,18 @@ export default function ProductsPage() {
     window.addEventListener('products-catalog-refresh', onCatalogRefresh);
     return () => window.removeEventListener('products-catalog-refresh', onCatalogRefresh);
   }, [loadData]);
+
+  useEffect(() => {
+    if (!isSupplierDropdownOpen) return;
+    const onPointerDown = (event: MouseEvent) => {
+      if (!supplierDropdownRef.current) return;
+      if (!supplierDropdownRef.current.contains(event.target as Node)) {
+        setIsSupplierDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    return () => document.removeEventListener('mousedown', onPointerDown);
+  }, [isSupplierDropdownOpen]);
 
   useEffect(() => {
     const onVisible = () => {
@@ -443,6 +456,10 @@ export default function ProductsPage() {
   };
 
   // Фильтруем товары
+  const selectedSupplier = selectedSupplierId !== null
+    ? suppliers.find((supplier) => supplier.id === selectedSupplierId) || null
+    : null;
+
   const filteredProducts = products.filter((product) => {
     // Фильтр по поставщику
     if (selectedSupplierId !== null) {
@@ -639,32 +656,89 @@ export default function ProductsPage() {
               </div>
             </div>
 
-            <div className="mb-6">
-              <h4 className="text-3xl font-semibold text-slate-900">Доставка</h4>
-              <div className="mt-3 space-y-2">
-                {[
-                  { value: 'any', label: 'Неважно' },
-                  { value: '1h', label: 'От 1 часа' },
-                  { value: 'today', label: 'Сегодня' },
-                  { value: 'tomorrow', label: 'Завтра' },
-                  { value: '3d', label: 'До 3 дней' },
-                  { value: '7d', label: 'До 7 дней' },
-                ].map((option) => (
-                  <label key={option.value} className="flex items-center gap-3 text-base text-slate-900">
-                    <input
-                      type="radio"
-                      name="delivery"
-                      checked={deliveryOption === option.value}
-                      onChange={() => setDeliveryOption(option.value as 'any' | '1h' | 'today' | 'tomorrow' | '3d' | '7d')}
-                      className="h-5 w-5 accent-primary-dark"
-                    />
-                    <span>{option.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
             <div>
+              <div className="mb-6" ref={supplierDropdownRef}>
+                <h4 className="text-3xl font-semibold text-slate-900">Поставщик</h4>
+                <div className="mt-3 relative">
+                  <button
+                    type="button"
+                    onClick={() => setIsSupplierDropdownOpen((prev) => !prev)}
+                    className="flex w-full items-center justify-between rounded-xl border border-slate-300 bg-white px-3 py-2 text-left text-sm text-slate-900 shadow-sm hover:border-slate-400"
+                    aria-haspopup="listbox"
+                    aria-expanded={isSupplierDropdownOpen}
+                  >
+                    <span className="flex min-w-0 items-center gap-2">
+                      {selectedSupplier?.logo_url ? (
+                        <img
+                          src={`${getPublicApiBase()}${selectedSupplier.logo_url}`}
+                          alt={selectedSupplier.full_name}
+                          className="h-6 w-6 shrink-0 rounded object-cover ring-1 ring-slate-200"
+                        />
+                      ) : (
+                        <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded bg-slate-200 text-[10px] font-semibold text-slate-600">
+                          {selectedSupplier?.full_name?.charAt(0).toUpperCase() || '∗'}
+                        </span>
+                      )}
+                      <span className="truncate">
+                        {selectedSupplier ? selectedSupplier.full_name : 'Все поставщики'}
+                      </span>
+                    </span>
+                    <span className={`text-xs text-slate-500 transition-transform ${isSupplierDropdownOpen ? 'rotate-180' : ''}`}>▼</span>
+                  </button>
+
+                  {isSupplierDropdownOpen && (
+                    <div
+                      className="absolute z-20 mt-2 max-h-72 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-lg"
+                      role="listbox"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedSupplierId(null);
+                          setIsSupplierDropdownOpen(false);
+                        }}
+                        className={`flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm ${
+                          selectedSupplierId === null
+                            ? 'bg-primary-light text-primary-dark'
+                            : 'text-slate-700 hover:bg-slate-100'
+                        }`}
+                      >
+                        <span className="inline-flex h-6 w-6 items-center justify-center rounded bg-slate-200 text-[10px] font-semibold text-slate-600">∗</span>
+                        <span className="truncate">Все поставщики</span>
+                      </button>
+                      {suppliers.map((supplier) => (
+                        <button
+                          key={supplier.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedSupplierId(supplier.id);
+                            setIsSupplierDropdownOpen(false);
+                          }}
+                          className={`flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm ${
+                            selectedSupplierId === supplier.id
+                              ? 'bg-primary-light text-primary-dark'
+                              : 'text-slate-700 hover:bg-slate-100'
+                          }`}
+                        >
+                          {supplier.logo_url ? (
+                            <img
+                              src={`${getPublicApiBase()}${supplier.logo_url}`}
+                              alt={supplier.full_name}
+                              className="h-6 w-6 shrink-0 rounded object-cover ring-1 ring-slate-200"
+                            />
+                          ) : (
+                            <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded bg-slate-200 text-[10px] font-semibold text-slate-600">
+                              {supplier.full_name.charAt(0).toUpperCase()}
+                            </span>
+                          )}
+                          <span className="truncate">{supplier.full_name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <div className="mb-2 flex items-center gap-2">
                 <h4 className="text-3xl font-semibold text-slate-900">Цена</h4>
                 <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-300 text-xs text-slate-600">i</span>

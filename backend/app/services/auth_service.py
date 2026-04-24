@@ -3,10 +3,14 @@
 """
 from decimal import Decimal
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from fastapi import HTTPException, status
 from app.models.user import User, UserType
 from app.schemas.auth import UserCreate, UserResponse, UserUpdate
 from app.core.security import get_password_hash, verify_password, decode_access_token
+from app.models.order import Order, OrderItem
+from app.models.product import Product
+from app.models.inventory import Inventory
 
 
 class AuthService:
@@ -138,4 +142,69 @@ class AuthService:
         self.db.refresh(user)
         
         return user
+
+    async def get_users(
+        self,
+        skip: int = 0,
+        limit: int = 200,
+        search: str | None = None,
+    ) -> list[User]:
+        """Список пользователей для администратора"""
+        query = self.db.query(User)
+        if search:
+            q = f"%{search}%"
+            query = query.filter(
+                or_(
+                    User.email.ilike(q),
+                    User.full_name.ilike(q),
+                )
+            )
+        return query.order_by(User.id.asc()).offset(skip).limit(limit).all()
+
+    async def delete_user_hard(self, user_id: int, current_user_id: int) -> None:
+        """
+        Полное удаление пользователя и связанных данных (админ-функция).
+        """
+        if user_id == current_user_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Нельзя удалить текущего администратора",
+            )
+
+        user = self.db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Пользователь не найден",
+            )
+
+        # 1) Удаляем заказы пользователя (как заказчик и как поставщик) и их позиции.
+        order_ids = [
+            row.id
+            for row in self.db.query(Order.id)
+            .filter(or_(Order.user_id == user_id, Order.supplier_id == user_id))
+            .all()
+        ]
+        if order_ids:
+            self.db.query(OrderItem).filter(OrderItem.order_id.in_(order_ids)).delete(synchronize_session=False)
+            self.db.query(Order).filter(Order.id.in_(order_ids)).delete(synchronize_session=False)
+
+        # 2) Удаляем товары поставщика и связанные с ними позиции/остатки.
+        product_ids = [
+            row.id
+            for row in self.db.query(Product.id)
+            .filter(Product.supplier_id == user_id)
+            .all()
+        ]
+        if product_ids:
+            self.db.query(OrderItem).filter(OrderItem.product_id.in_(product_ids)).delete(synchronize_session=False)
+            self.db.query(Inventory).filter(Inventory.product_id.in_(product_ids)).delete(synchronize_session=False)
+            self.db.query(Product).filter(Product.id.in_(product_ids)).delete(synchronize_session=False)
+
+        # 3) Страховочно удаляем остатки, если остались строки по supplier_id.
+        self.db.query(Inventory).filter(Inventory.supplier_id == user_id).delete(synchronize_session=False)
+
+        # 4) Удаляем пользователя.
+        self.db.query(User).filter(User.id == user_id).delete(synchronize_session=False)
+        self.db.commit()
 

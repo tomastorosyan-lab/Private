@@ -402,16 +402,21 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 </div>
               ) : (
                 <div className="flex items-center space-x-2 sm:space-x-4">
+                  {pathname === '/register' ? (
+                    <Link
+                      href="/login"
+                      className="rounded-lg px-2 py-2 text-xs font-medium transition-colors sm:px-4 sm:text-sm bg-primary-dark text-white hover:bg-primary"
+                    >
+                      Войти
+                    </Link>
+                  ) : (
                   <Link
                     href="/register"
-                    className={`rounded-lg px-2 py-2 text-xs font-medium transition-colors sm:px-4 sm:text-sm ${
-                      pathname === '/register'
-                        ? 'bg-primary-dark text-white hover:bg-primary'
-                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                    }`}
+                    className="rounded-lg px-2 py-2 text-xs font-medium transition-colors sm:px-4 sm:text-sm bg-primary-dark text-white hover:bg-primary"
                   >
                     Регистрация
                   </Link>
+                  )}
                 </div>
               )}
             </div>

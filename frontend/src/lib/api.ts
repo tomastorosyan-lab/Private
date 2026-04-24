@@ -304,6 +304,42 @@ class ApiClient {
     });
   }
 
+  async getUsers(params?: { skip?: number; limit?: number; search?: string }) {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && String(value) !== '') {
+          queryParams.append(key, String(value));
+        }
+      });
+    }
+    const query = queryParams.toString();
+    return this.request<User[]>(`/auth/users${query ? `?${query}` : ''}`);
+  }
+
+  async updateUserByAdmin(userId: number, profileData: {
+    email?: string;
+    password?: string;
+    full_name?: string;
+    description?: string | null;
+    contact_phone?: string | null;
+    integration_type?: string | null;
+    integration_config?: any;
+    delivery_address?: string | null;
+    min_order_amount?: number;
+  }) {
+    return this.request<User>(`/auth/users/${userId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(profileData),
+    });
+  }
+
+  async deleteUserByAdmin(userId: number) {
+    return this.request<void>(`/auth/users/${userId}`, {
+      method: 'DELETE',
+    });
+  }
+
   logout() {
     this.setToken(null);
   }
