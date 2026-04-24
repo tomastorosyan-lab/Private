@@ -38,9 +38,19 @@ class AuthService:
         code = f"{secrets.randbelow(1000000):06d}"
         now = datetime.now(timezone.utc)
         expires_at = now + timedelta(minutes=settings.EMAIL_VERIFICATION_CODE_TTL_MINUTES)
+        cooldown_seconds = max(0, int(settings.EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS))
 
         row = self.db.query(EmailVerification).filter(EmailVerification.email == normalized_email).first()
         if row:
+            last_sent_at = row.updated_at or row.created_at
+            if last_sent_at is not None and cooldown_seconds > 0:
+                seconds_from_last_send = (now - last_sent_at).total_seconds()
+                if seconds_from_last_send < cooldown_seconds:
+                    retry_after = int(cooldown_seconds - seconds_from_last_send + 0.999)
+                    raise HTTPException(
+                        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                        detail=f"Код уже отправлялся недавно. Повторите через {retry_after} сек.",
+                    )
             row.code_hash = get_password_hash(code)
             row.attempts = 0
             row.expires_at = expires_at

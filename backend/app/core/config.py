@@ -54,6 +54,7 @@ class Settings(BaseSettings):
     EMAIL_VERIFICATION_ENABLED: bool = True
     EMAIL_VERIFICATION_CODE_TTL_MINUTES: int = 10
     EMAIL_VERIFICATION_WINDOW_MINUTES: int = 30
+    EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS: int = 60
     
     class Config:
         env_file = ".env"
