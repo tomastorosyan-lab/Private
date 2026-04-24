@@ -1,0 +1,65 @@
+name: Admin delete user
+
+on:
+  workflow_dispatch:
+    inputs:
+      email_pattern:
+        description: "Email or part of email (example: bonjoy)"
+        required: true
+        type: string
+
+jobs:
+  delete_user:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete user in production DB via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            set -euo pipefail
+            APP_DIR="/opt/dis"
+            COMPOSE_FILE="docker-compose.prod.yml"
+            EMAIL_PATTERN="${{ github.event.inputs.email_pattern }}"
+
+            if docker compose version >/dev/null 2>&1; then
+              compose() { docker compose -f "${COMPOSE_FILE}" "$@"; }
+            elif command -v docker-compose >/dev/null 2>&1; then
+              compose() { docker-compose -f "${COMPOSE_FILE}" "$@"; }
+            else
+              echo "ERROR: docker compose is not available" >&2
+              exit 1
+            fi
+
+            cd "${APP_DIR}"
+
+            echo "[admin-delete-user] Looking up users by pattern: ${EMAIL_PATTERN}"
+            compose exec -T db psql -U postgres -d dis_db -v ON_ERROR_STOP=1 <<SQL
+            DO \$\$
+            DECLARE
+              v_pattern TEXT := '%' || '${EMAIL_PATTERN}' || '%';
+              v_user RECORD;
+            BEGIN
+              SELECT id, email, user_type, is_active
+              INTO v_user
+              FROM users
+              WHERE email ILIKE v_pattern
+              ORDER BY id
+              LIMIT 1;
+
+              IF v_user.id IS NULL THEN
+                RAISE EXCEPTION 'No user found for pattern: %', '${EMAIL_PATTERN}';
+              END IF;
+
+              RAISE NOTICE 'Found user: id=%, email=%, user_type=%, is_active=%',
+                v_user.id, v_user.email, v_user.user_type, v_user.is_active;
+
+              DELETE FROM users WHERE id = v_user.id;
+
+              RAISE NOTICE 'User deleted: id=%, email=%', v_user.id, v_user.email;
+            END
+            \$\$;
+            SQL
