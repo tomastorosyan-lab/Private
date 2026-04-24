@@ -52,7 +52,7 @@ class Settings(BaseSettings):
     SMTP_FROM_EMAIL: Optional[str] = None
     SMTP_FROM_NAME: str = "DIS"
     # Email-верификация регистрации
-    EMAIL_VERIFICATION_ENABLED: bool = True
+    EMAIL_VERIFICATION_ENABLED: bool = False
     EMAIL_VERIFICATION_CODE_TTL_MINUTES: int = 10
     EMAIL_VERIFICATION_WINDOW_MINUTES: int = 30
     EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS: int = 60
