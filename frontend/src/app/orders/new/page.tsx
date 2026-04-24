@@ -413,19 +413,9 @@ export default function NewOrderPage() {
     return hasStock;
   });
 
-  const profileUser = authService.getUser();
-
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold text-gray-900">Создание заказа</h1>
-
-      {profileUser?.user_type === 'customer' && (
-        <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950 shadow-sm">
-          В блоке корзины <strong>по каждому поставщику</strong> показан его минимальный заказ (если он задан
-          в личном кабинете поставщика). Пока сумма по товарам этого поставщика ниже минимума — строка
-          подсвечивается красным, кнопка «Создать заказ» неактивна.
-        </div>
-      )}
 
       {error && (
         <div className="rounded-md bg-red-50 p-4">
