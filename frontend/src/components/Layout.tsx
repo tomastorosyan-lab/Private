@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { authService } from '@/lib/auth';
 import { api } from '@/lib/api';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -17,6 +17,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [pendingIncomingCount, setPendingIncomingCount] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [headerSearchQuery, setHeaderSearchQuery] = useState('');
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -183,6 +185,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       window.removeEventListener('supplier-pending-orders-changed', onOrdersChanged);
     };
   }, [user?.id, user?.user_type, pathname]);
+
+  useEffect(() => {
+    const onClickOutside = (event: MouseEvent) => {
+      if (!profileMenuRef.current) return;
+      if (profileMenuRef.current.contains(event.target as Node)) return;
+      setProfileMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, []);
 
   const handleLogout = () => {
     authService.logout();
@@ -356,32 +368,40 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                       )}
                     </Link>
                   )}
-                  <Link
-                    href="/profile"
-                    className="max-w-[100px] truncate text-xs text-slate-600 hover:text-primary sm:max-w-none"
-                    title={user.full_name}
-                  >
-                    Профиль
-                  </Link>
-                  <button
-                    onClick={handleLogout}
-                    className="rounded-lg bg-rose-800/90 px-2 py-2 text-xs font-medium text-white shadow-sm ring-1 ring-rose-900/20 hover:bg-rose-800 sm:px-3"
-                  >
-                    Выйти
-                  </button>
+                  <div className="relative" ref={profileMenuRef}>
+                    <button
+                      type="button"
+                      onClick={() => setProfileMenuOpen((prev) => !prev)}
+                      className="inline-flex items-center gap-1 rounded-lg px-2 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 hover:text-primary sm:px-3"
+                    >
+                      Профиль
+                      <span className={`transition-transform ${profileMenuOpen ? 'rotate-180' : ''}`}>▾</span>
+                    </button>
+                    {profileMenuOpen && (
+                      <div className="absolute right-0 mt-2 w-48 rounded-lg border border-slate-200 bg-white py-1 shadow-lg z-50">
+                        <Link
+                          href="/profile"
+                          className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                          onClick={() => setProfileMenuOpen(false)}
+                        >
+                          Личный кабинет
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setProfileMenuOpen(false);
+                            handleLogout();
+                          }}
+                          className="block w-full px-4 py-2 text-left text-sm text-rose-700 hover:bg-rose-50"
+                        >
+                          Выйти
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <div className="flex items-center space-x-2 sm:space-x-4">
-                  <Link
-                    href="/login"
-                    className={`rounded-lg px-2 py-2 text-xs font-medium transition-colors sm:px-4 sm:text-sm ${
-                      pathname === '/login'
-                        ? 'bg-primary-dark text-white hover:bg-primary'
-                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                    }`}
-                  >
-                    Вход
-                  </Link>
                   <Link
                     href="/register"
                     className={`rounded-lg px-2 py-2 text-xs font-medium transition-colors sm:px-4 sm:text-sm ${
