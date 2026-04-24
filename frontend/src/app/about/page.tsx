@@ -7,7 +7,7 @@ export default function AboutPage() {
     <div className="mx-auto max-w-6xl space-y-12">
       <header className="pt-2 text-center sm:pt-4">
         <h1 className="text-display font-semibold tracking-tight text-slate-900 text-balance sm:text-display-lg">
-          Как работает DIS
+          Как работает абхазхаб
         </h1>
         <p className="mt-4 text-base leading-relaxed text-slate-600 sm:text-lg">
           Простой и удобный процесс заказа товаров от поставщиков
@@ -54,7 +54,7 @@ export default function AboutPage() {
             </div>
             <div className="flex-1 text-center md:text-right">
               <h3 className="mb-3 text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">
-                DIS формирует заказы
+                абхазхаб формирует заказы
               </h3>
               <p className="text-base leading-relaxed text-slate-600 sm:text-lg">
                 Наш сервис автоматически группирует товары по поставщикам и формирует отдельные заказы 

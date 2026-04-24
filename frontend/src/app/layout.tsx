@@ -3,7 +3,7 @@ import './globals.css'
 import Layout from '@/components/Layout'
 
 export const metadata: Metadata = {
-  title: 'DIS - Агрегатор поставщиков',
+  title: 'абхазхаб - Агрегатор поставщиков',
   description: 'Сервис агрегации оптовой продукции для магазинов и ресторанов',
 }
 

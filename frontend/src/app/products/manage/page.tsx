@@ -24,6 +24,7 @@ interface Product {
   id: number;
   name: string;
   description: string | null;
+  category_id?: number | null;
   category: string | null;
   category_path?: string | null;
   unit: string;
@@ -45,7 +46,7 @@ type FormMode = 'idle' | 'create' | 'edit';
 interface ProductDraft {
   name: string;
   description: string;
-  category: string;
+  category_id: string;
   category_path: string;
   items_per_box: string;
   quantity: string;
@@ -55,7 +56,7 @@ interface ProductDraft {
 const emptyDraft = (): ProductDraft => ({
   name: '',
   description: '',
-  category: '',
+  category_id: '',
   category_path: '',
   items_per_box: '',
   quantity: '',
@@ -105,8 +106,7 @@ export default function ManageProductsPage() {
   const [draggingCrop, setDraggingCrop] = useState(false);
   const dragStateRef = useRef<{ startX: number; startY: number; originX: number; originY: number } | null>(null);
 
-  const [categories, setCategories] = useState<string[]>([]);
-  const [categoryPathByLeaf, setCategoryPathByLeaf] = useState<Record<string, string>>({});
+  const [categoryOptions, setCategoryOptions] = useState<Array<{ id: number; name: string; path: string }>>([]);
 
   const clampCropPosition = (
     x: number,
@@ -282,36 +282,28 @@ export default function ManageProductsPage() {
   const loadCategories = async () => {
     try {
       const data = await api.getCategories();
-      setCategories(data.categories || []);
-      const map: Record<string, string> = { ...(data.category_path_by_leaf || {}) };
+      const pathByLeaf: Record<string, string> = { ...(data.category_path_by_leaf || {}) };
+      const nodes = Array.isArray(data.tree) ? data.tree : [];
+      const nodesById = new Map<number, { id: number; parent_id?: number | null; name?: string }>();
+      nodes.forEach((node) => {
+        if (typeof node.id === 'number') {
+          nodesById.set(node.id, { id: node.id, parent_id: node.parent_id, name: node.name });
+        }
+      });
+      const parentIds = new Set<number>();
+      nodes.forEach((node) => {
+        if (typeof node.parent_id === 'number') parentIds.add(node.parent_id);
+      });
 
-      // Backward compatibility for legacy API tree format: [{ title, children[] }]
-      if (Object.keys(map).length === 0) {
-        (data.tree || []).forEach((section) => {
-          const sectionTitle = section.name || section.title;
-          (section.children || []).forEach((leaf) => {
-            map[leaf] = sectionTitle ? `${sectionTitle} > ${leaf}` : leaf;
-          });
-        });
-      }
-
-      // New API tree format: flat nodes [{ id, parent_id, slug, name }]
-      if (Object.keys(map).length === 0 && Array.isArray(data.tree)) {
-        const nodesById = new Map<number, { name?: string; parent_id?: number | null }>();
-        data.tree.forEach((node) => {
-          if (typeof node.id === 'number') {
-            nodesById.set(node.id, { name: node.name, parent_id: node.parent_id });
-          }
-        });
-        data.categories.forEach((leaf) => {
-          const currentNode = data.tree?.find((node) => node.name === leaf);
-          if (!currentNode || typeof currentNode.id !== 'number') return;
-          const parentNode = nodesById.get(currentNode.parent_id ?? -1);
-          map[leaf] = parentNode?.name ? `${parentNode.name} > ${leaf}` : leaf;
-        });
-      }
-
-      setCategoryPathByLeaf(map);
+      const options: Array<{ id: number; name: string; path: string }> = [];
+      nodes.forEach((node) => {
+        if (typeof node.id !== 'number' || typeof node.name !== 'string') return;
+        if (parentIds.has(node.id)) return;
+        const path = pathByLeaf[node.name] || node.name;
+        options.push({ id: node.id, name: node.name, path });
+      });
+      options.sort((a, b) => a.path.localeCompare(b.path, 'ru'));
+      setCategoryOptions(options);
     } catch (err: any) {
       console.error('Ошибка загрузки категорий:', err);
     }
@@ -402,7 +394,7 @@ export default function ManageProductsPage() {
       setDraft({
         name: p.name,
         description: p.description ?? '',
-        category: p.category ?? '',
+        category_id: p.category_id != null ? String(p.category_id) : '',
         category_path: p.category_path ?? '',
         items_per_box: p.items_per_box != null ? String(p.items_per_box) : '',
         quantity: inv ? String(Math.floor(parseFloat(String(inv.quantity)))) : '',
@@ -431,8 +423,7 @@ export default function ManageProductsPage() {
       const body: Parameters<typeof api.createProduct>[0] = {
         name: draft.name.trim(),
         description: draft.description.trim() || undefined,
-        category: draft.category || undefined,
-        category_path: draft.category ? (categoryPathByLeaf[draft.category] || draft.category) : undefined,
+        category_id: draft.category_id ? parseInt(draft.category_id, 10) : undefined,
         unit: 'шт',
         items_per_box: draft.items_per_box ? parseInt(draft.items_per_box, 10) : undefined,
         supplier_id: user.id,
@@ -529,11 +520,7 @@ export default function ManageProductsPage() {
       await api.updateProduct(editingId, {
         name: draft.name.trim(),
         description: draft.description,
-        category: draft.category === '' ? null : draft.category,
-        category_path:
-          draft.category === ''
-            ? null
-            : (categoryPathByLeaf[draft.category] || draft.category),
+        category_id: draft.category_id === '' ? null : parseInt(draft.category_id, 10),
         unit: 'шт',
         items_per_box: draft.items_per_box
           ? parseInt(draft.items_per_box, 10)
@@ -659,14 +646,14 @@ export default function ManageProductsPage() {
                   </label>
                   <select
                     id="pf-cat"
-                    value={draft.category}
-                    onChange={(e) => setDraft({ ...draft, category: e.target.value })}
+                    value={draft.category_id}
+                    onChange={(e) => setDraft({ ...draft, category_id: e.target.value })}
                     className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm"
                   >
                     <option value="">Выберите категорию</option>
-                    {categories.map((cat) => (
-                      <option key={cat} value={cat}>
-                        {categoryPathByLeaf[cat] || cat}
+                    {categoryOptions.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.path}
                       </option>
                     ))}
                   </select>
@@ -971,7 +958,7 @@ export default function ManageProductsPage() {
                           <div className="truncate max-w-[200px]">{product.description || '—'}</div>
                         </td>
                         <td className="hidden lg:table-cell px-2 sm:px-4 py-4 text-sm text-gray-500 whitespace-nowrap">
-                          {product.category || '—'}
+                          {product.category_path || product.category || '—'}
                         </td>
                         <td className="hidden xl:table-cell px-2 sm:px-4 py-4 text-sm text-gray-500 whitespace-nowrap">
                           {product.unit}

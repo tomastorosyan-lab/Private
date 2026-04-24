@@ -57,6 +57,7 @@ class ProductUpdate(BaseModel):
 
 class ProductSearch(BaseModel):
     query: Optional[str] = Field(None, description="Текстовый поиск по названию и описанию", example="молоко")
+    category_id: Optional[int] = Field(None, description="Фильтр по ID категории")
     category: Optional[str] = Field(None, description="Фильтр по категории", example="Молочные продукты")
     supplier_id: Optional[int] = Field(None, description="Фильтр по поставщику")
     min_price: Optional[Decimal] = Field(None, description="Минимальная цена", example=100.00)

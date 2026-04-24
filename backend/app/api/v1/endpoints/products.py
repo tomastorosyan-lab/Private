@@ -39,7 +39,8 @@ async def get_products(
     limit: int = Query(100, ge=1, le=1000, description="Максимальное количество записей"),
     search: Optional[str] = Query(None, description="Поисковый запрос (название или описание)"),
     supplier_id: Optional[int] = Query(None, description="ID поставщика для фильтрации"),
-    category: Optional[str] = Query(None, description="Категория товара для фильтрации"),
+    category: Optional[str] = Query(None, description="Категория товара для фильтрации (legacy)"),
+    category_id: Optional[int] = Query(None, description="ID категории товара для фильтрации"),
     db: Session = Depends(get_db)
 ):
     """
@@ -54,7 +55,8 @@ async def get_products(
         limit=limit,
         search=search,
         supplier_id=supplier_id,
-        category=category
+        category=category,
+        category_id=category_id,
     )
 
 

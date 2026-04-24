@@ -12,6 +12,7 @@ interface Product {
   id: number;
   name: string;
   description: string | null;
+  category_id?: number | null;
   category: string | null;
   category_path?: string | null;
   unit: string;
@@ -58,6 +59,7 @@ export default function ProductsPage() {
   const [favoriteProductIds, setFavoriteProductIds] = useState<number[]>([]);
   const [selectedSupplierId, setSelectedSupplierId] = useState<number | null>(null);
   const [selectedProductForDescription, setSelectedProductForDescription] = useState<Product | null>(null);
+  const [categoryIdsByName, setCategoryIdsByName] = useState<Record<string, number>>({});
   
   // Фильтры
   const [selectedCategory, setSelectedCategory] = useState<string>('');
@@ -94,7 +96,7 @@ export default function ProductsPage() {
     ));
   };
 
-  const effectiveCategoryFilter = useMemo(() => {
+  const effectiveCategoryNameFilter = useMemo(() => {
     if (!selectedCategory) return null;
     const selectedGroup = PRODUCT_CATEGORY_TREE.find((group) => group.name === selectedCategory);
     if (!selectedGroup) {
@@ -105,6 +107,16 @@ export default function ProductsPage() {
     return allowed;
   }, [selectedCategory]);
 
+  const effectiveCategoryIdFilter = useMemo(() => {
+    if (!effectiveCategoryNameFilter) return null;
+    const ids = new Set<number>();
+    effectiveCategoryNameFilter.forEach((name) => {
+      const id = categoryIdsByName[name];
+      if (typeof id === 'number') ids.add(id);
+    });
+    return ids.size ? ids : null;
+  }, [effectiveCategoryNameFilter, categoryIdsByName]);
+
   const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -112,13 +124,21 @@ export default function ProductsPage() {
       const supplierIdParam = searchParams.get('supplier_id');
       const supplierId = supplierIdParam ? Number(supplierIdParam) : undefined;
 
-      const [productsData, suppliersData, ordersData] = await Promise.all([
+      const [productsData, suppliersData, categoriesData, ordersData] = await Promise.all([
         api.getProducts({ limit: 1000, supplier_id: supplierId }),
         api.getDistributors({ limit: 100 }),
+        api.getCategories().catch(() => ({ tree: [] })),
         api.getOrders({ limit: 1000 }).catch(() => []),
       ]);
       setProducts(productsData);
       setSuppliers(suppliersData);
+      const byName: Record<string, number> = {};
+      (categoriesData.tree || []).forEach((node) => {
+        if (typeof node.id === 'number' && typeof node.name === 'string') {
+          byName[node.name] = node.id;
+        }
+      });
+      setCategoryIdsByName(byName);
 
       const popularityMap: Record<number, number> = {};
       (ordersData as any[]).forEach((order) => {
@@ -419,9 +439,13 @@ export default function ProductsPage() {
     }
     
     // Фильтр по категории
-    if (effectiveCategoryFilter) {
+    if (effectiveCategoryIdFilter && product.category_id != null) {
+      if (!effectiveCategoryIdFilter.has(Number(product.category_id))) {
+        return false;
+      }
+    } else if (effectiveCategoryNameFilter) {
       const productCategory = product.category || '';
-      if (!effectiveCategoryFilter.has(productCategory)) {
+      if (!effectiveCategoryNameFilter.has(productCategory)) {
         return false;
       }
     }
@@ -513,7 +537,10 @@ export default function ProductsPage() {
               <div className="mt-3 space-y-1">
                 <button
                   type="button"
-                  onClick={() => setSelectedCategory('')}
+                  onClick={() => {
+                    setSelectedCategory('');
+                    setExpandedCategoryGroups([]);
+                  }}
                   className="flex w-full items-center gap-2 rounded-lg px-1 py-1 text-left text-base text-slate-700 hover:bg-slate-200/60"
                   aria-label="Все категории"
                 >

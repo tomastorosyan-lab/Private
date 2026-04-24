@@ -54,7 +54,8 @@ class ProductService:
         limit: int = 100,
         search: Optional[str] = None,
         supplier_id: Optional[int] = None,
-        category: Optional[str] = None
+        category: Optional[str] = None,
+        category_id: Optional[int] = None,
     ) -> List[Product]:
         """Получение списка товаров"""
         query = self.db.query(Product)
@@ -70,7 +71,9 @@ class ProductService:
         if supplier_id:
             query = query.filter(Product.supplier_id == supplier_id)
         
-        if category:
+        if category_id is not None:
+            query = query.filter(Product.category_id == category_id)
+        elif category:
             query = query.filter(Product.category == category)
         
         return query.offset(skip).limit(limit).all()
@@ -91,7 +94,9 @@ class ProductService:
                 )
             )
         
-        if search_params.category:
+        if search_params.category_id is not None:
+            query = query.filter(Product.category_id == search_params.category_id)
+        elif search_params.category:
             query = query.filter(Product.category == search_params.category)
         
         if search_params.supplier_id:

@@ -51,6 +51,7 @@ export interface Product {
   id: number;
   name: string;
   description: string | null;
+  category_id?: number | null;
   category: string | null;
   category_path?: string | null;
   unit: string;
@@ -313,6 +314,7 @@ class ApiClient {
     limit?: number;
     search?: string;
     supplier_id?: number;
+    category_id?: number;
     category?: string;
   }) {
     const queryParams = new URLSearchParams();
@@ -334,6 +336,7 @@ class ApiClient {
   async createProduct(productData: {
     name: string;
     description?: string;
+    category_id?: number;
     category?: string;
     category_path?: string;
     unit: string;
@@ -352,6 +355,7 @@ class ApiClient {
   async updateProduct(productId: number, productData: {
     name?: string;
     description?: string | null;
+    category_id?: number | null;
     category?: string | null;
     category_path?: string | null;
     unit?: string;
@@ -364,6 +368,7 @@ class ApiClient {
     const body: Record<string, unknown> = {};
     if (productData.name !== undefined) body.name = productData.name;
     if (productData.description !== undefined) body.description = productData.description;
+    if (productData.category_id !== undefined) body.category_id = productData.category_id;
     if (productData.category !== undefined) body.category = productData.category;
     if (productData.category_path !== undefined) body.category_path = productData.category_path;
     if (productData.unit !== undefined) body.unit = productData.unit;
@@ -397,6 +402,7 @@ class ApiClient {
 
   async searchProducts(searchParams: {
     query?: string;
+    category_id?: number;
     category?: string;
     supplier_id?: number;
     min_price?: number;

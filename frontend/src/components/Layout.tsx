@@ -246,10 +246,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               >
                 <img
                   src="/logo.svg"
-                  alt="DIS"
+                  alt="абхазхаб"
                   className="mr-2 h-8 w-8 flex-shrink-0"
                 />
-                <span className="hidden sm:inline">DIS</span>
+                <span className="hidden sm:inline">абхазхаб</span>
               </Link>
               <Link
                 href={user?.user_type === 'supplier' ? '/products/manage' : '/products'}
@@ -277,7 +277,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 type="text"
                 value={headerSearchQuery}
                 onChange={(e) => setHeaderSearchQuery(e.target.value)}
-                placeholder="Искать в DIS"
+                placeholder="Искать в абхазхаб"
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200"
               />
               <button

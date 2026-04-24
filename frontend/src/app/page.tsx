@@ -26,7 +26,7 @@ export default function Home() {
     <div className="space-y-10 sm:space-y-12">
       <header className="mx-auto max-w-3xl text-center">
         <h1 className="text-display font-semibold tracking-tight text-slate-900 text-balance sm:text-display-lg">
-          DIS — агрегатор поставщиков
+          абхазхаб — агрегатор поставщиков
         </h1>
         <p className="mt-4 text-base leading-relaxed text-slate-600 sm:text-lg">
           B2B-платформа для закупок: каталог, заказы и поставщики в одном интерфейсе для
