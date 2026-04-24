@@ -14,7 +14,7 @@ from app.models.order import Order, OrderItem
 from app.models.product import Product
 from app.models.inventory import Inventory
 from app.models.email_verification import EmailVerification
-from app.services.email_service import EmailService
+from app.services.email_service import EmailService, EmailDeliveryError
 from app.core.config import settings
 
 
@@ -68,10 +68,10 @@ class AuthService:
 
         try:
             EmailService.send_registration_verification_code(normalized_email, code)
-        except Exception:
+        except EmailDeliveryError as exc:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Не удалось отправить код подтверждения на email",
+                detail=str(exc),
             )
 
     async def confirm_registration_code(self, email: str, code: str) -> None:

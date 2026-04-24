@@ -48,6 +48,7 @@ class Settings(BaseSettings):
     SMTP_USERNAME: Optional[str] = None
     SMTP_PASSWORD: Optional[str] = None
     SMTP_USE_TLS: bool = True
+    SMTP_USE_SSL: bool = False
     SMTP_FROM_EMAIL: Optional[str] = None
     SMTP_FROM_NAME: str = "DIS"
     # Email-верификация регистрации
