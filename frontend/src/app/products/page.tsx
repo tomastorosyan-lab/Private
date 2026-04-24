@@ -63,6 +63,7 @@ export default function ProductsPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [productQuantities, setProductQuantities] = useState<Record<number, number>>({});
+  const [productQuantityHints, setProductQuantityHints] = useState<Record<number, string>>({});
   const [favoriteProductIds, setFavoriteProductIds] = useState<number[]>([]);
   const [selectedSupplierId, setSelectedSupplierId] = useState<number | null>(null);
   const [selectedProductForDescription, setSelectedProductForDescription] = useState<Product | null>(null);
@@ -450,6 +451,11 @@ export default function ProductsPage() {
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('cart-updated'));
     }
+    setProductQuantityHints((prev) => {
+      const next = { ...prev };
+      delete next[product.id];
+      return next;
+    });
     
     setSuccess('Товар добавлен в корзину');
     setError('');
@@ -884,6 +890,11 @@ export default function ProductsPage() {
                                   ...prev,
                                   [product.id]: totalQuantity
                                 }));
+                                setProductQuantityHints((prev) => {
+                                  const next = { ...prev };
+                                  delete next[product.id];
+                                  return next;
+                                });
                               }}
                               className="px-1.5 py-0.5 text-gray-700 hover:bg-primary-light hover:text-primary-dark active:bg-primary transition-colors text-xs font-bold rounded-l-md"
                               aria-label="Уменьшить количество"
@@ -906,6 +917,11 @@ export default function ProductsPage() {
                                   ...prev,
                                   [product.id]: totalQuantity
                                 }));
+                                setProductQuantityHints((prev) => {
+                                  const next = { ...prev };
+                                  delete next[product.id];
+                                  return next;
+                                });
                               }}
                               className="w-10 px-1 py-0.5 text-xs text-center font-semibold focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary border-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                             />
@@ -920,6 +936,11 @@ export default function ProductsPage() {
                                   ...prev,
                                   [product.id]: totalQuantity
                                 }));
+                                setProductQuantityHints((prev) => {
+                                  const next = { ...prev };
+                                  delete next[product.id];
+                                  return next;
+                                });
                               }}
                               className="px-1.5 py-0.5 text-gray-700 hover:bg-primary-light hover:text-primary-dark active:bg-primary transition-colors text-xs font-bold rounded-r-md"
                               aria-label="Увеличить количество"
@@ -931,13 +952,26 @@ export default function ProductsPage() {
                         <div className="text-xs font-bold text-primary-dark bg-primary-light px-2 py-0.5 rounded-md whitespace-nowrap">
                           Итого: {selectedQuantity} {product.unit} на сумму {(selectedQuantity * parseFloat(productInventory.price)).toFixed(2)} ₽
                         </div>
+                        {productQuantityHints[product.id] && (
+                          <div className="text-xs font-medium text-amber-700 bg-amber-50 px-2 py-1 rounded-md">
+                            {productQuantityHints[product.id]}
+                          </div>
+                        )}
                         </div>
                         <button
-                          onClick={() => addToCart(product, selectedQuantity)}
-                          disabled={selectedQuantity === 0}
+                          onClick={() => {
+                            if (selectedQuantity <= 0) {
+                              setProductQuantityHints((prev) => ({
+                                ...prev,
+                                [product.id]: 'Выберите количество упаковок, чтобы добавить товар в корзину',
+                              }));
+                              return;
+                            }
+                            addToCart(product, selectedQuantity);
+                          }}
                           className={`w-full px-3 py-1 rounded-lg text-xs font-bold shadow-md transition-all ${
                             selectedQuantity === 0
-                              ? 'bg-green-200 text-green-800 cursor-not-allowed'
+                              ? 'bg-green-200 text-green-800'
                               : 'bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800 hover:shadow-lg'
                           }`}
                         >
