@@ -42,6 +42,8 @@ jobs:
             DECLARE
               v_pattern TEXT := '%' || '${EMAIL_PATTERN}' || '%';
               v_user RECORD;
+              v_order_ids INTEGER[];
+              v_product_ids INTEGER[];
             BEGIN
               SELECT id, email, user_type, is_active
               INTO v_user
@@ -57,6 +59,33 @@ jobs:
               RAISE NOTICE 'Found user: id=%, email=%, user_type=%, is_active=%',
                 v_user.id, v_user.email, v_user.user_type, v_user.is_active;
 
+              -- 1) Orders and order items related to this user (as customer or supplier).
+              SELECT COALESCE(array_agg(id), '{}'::INTEGER[])
+              INTO v_order_ids
+              FROM orders
+              WHERE user_id = v_user.id OR supplier_id = v_user.id;
+
+              IF array_length(v_order_ids, 1) IS NOT NULL THEN
+                DELETE FROM order_items WHERE order_id = ANY(v_order_ids);
+                DELETE FROM orders WHERE id = ANY(v_order_ids);
+              END IF;
+
+              -- 2) Products owned by this supplier and dependencies.
+              SELECT COALESCE(array_agg(id), '{}'::INTEGER[])
+              INTO v_product_ids
+              FROM products
+              WHERE supplier_id = v_user.id;
+
+              IF array_length(v_product_ids, 1) IS NOT NULL THEN
+                DELETE FROM order_items WHERE product_id = ANY(v_product_ids);
+                DELETE FROM inventory WHERE product_id = ANY(v_product_ids);
+                DELETE FROM products WHERE id = ANY(v_product_ids);
+              END IF;
+
+              -- 3) Any remaining inventory rows linked by supplier_id.
+              DELETE FROM inventory WHERE supplier_id = v_user.id;
+
+              -- 4) Finally remove the user.
               DELETE FROM users WHERE id = v_user.id;
 
               RAISE NOTICE 'User deleted: id=%, email=%', v_user.id, v_user.email;
