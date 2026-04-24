@@ -212,8 +212,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       return pathname?.startsWith('/products/manage');
     }
     if (href === '/orders') {
-      // Для заказов проверяем, что путь начинается с /orders, но не /orders/new
-      return pathname?.startsWith('/orders') && !pathname?.startsWith('/orders/new');
+      return pathname?.startsWith('/orders');
     }
     if (href === '/distributors') {
       return pathname === '/distributors';
@@ -312,14 +311,22 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   {user.user_type === 'supplier' && (
                     <Link
                       href="/products/manage"
-                      className="text-xs text-slate-600 hover:text-primary"
+                      className={`rounded-lg px-2 py-2 text-xs font-medium transition-colors sm:px-3 ${
+                        isActive('/products/manage')
+                          ? 'bg-primary-light text-primary-dark'
+                          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                      }`}
                     >
                       Мои товары
                     </Link>
                   )}
                   <Link
                     href="/orders"
-                    className="relative text-xs text-slate-600 hover:text-primary"
+                    className={`relative rounded-lg px-2 py-2 text-xs font-medium transition-colors sm:px-3 ${
+                      isActive('/orders')
+                        ? 'bg-primary-light text-primary-dark'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
                   >
                     {user.user_type === 'supplier' ? 'Заказы' : 'Заказы'}
                     {user.user_type === 'supplier' && pendingIncomingCount > 0 && (
@@ -331,7 +338,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   {user.user_type === 'customer' && (
                     <Link
                       href="/favorites"
-                      className="relative text-xs text-slate-600 hover:text-primary"
+                      className={`relative rounded-lg px-2 py-2 text-xs font-medium transition-colors sm:px-3 ${
+                        isActive('/favorites')
+                          ? 'bg-primary-light text-primary-dark'
+                          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                      }`}
                     >
                       Избранное
                       {favoritesCount > 0 && (
@@ -345,20 +356,20 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     <Link
                       href="/orders/new"
                       className={`relative inline-flex items-center rounded-lg px-2 py-2 text-xs font-medium transition-colors sm:px-3 ${
-                        cartCount > 0
-                          ? 'bg-secondary-light text-secondary-dark hover:bg-emerald-200/90'
-                          : 'bg-primary-dark text-white hover:bg-primary'
+                        pathname === '/orders/new'
+                          ? 'bg-primary-light text-primary-dark'
+                          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                       }`}
                     >
                       <span className="mr-1 sm:mr-2">🛒</span>
                       <span className="hidden md:inline">Корзина</span>
                       {cartCount > 0 && (
-                        <span className="ml-2 hidden lg:inline text-xs font-semibold text-secondary-dark/90">
+                        <span className="ml-2 hidden lg:inline text-xs font-semibold text-slate-600">
                           на {formatCartTotal(cartTotal)}
                         </span>
                       )}
                       {cartCount > 0 && (
-                        <span className="ml-1 inline-flex items-center justify-center rounded-full bg-white/90 px-1.5 py-0.5 text-xs font-semibold leading-none text-secondary-dark sm:ml-2 sm:px-2 sm:py-1">
+                        <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary-light px-1.5 py-0.5 text-xs font-semibold leading-none text-primary-dark sm:ml-2 sm:px-2 sm:py-1">
                           {cartCount}
                         </span>
                       )}
@@ -368,7 +379,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     <button
                       type="button"
                       onClick={() => setProfileMenuOpen((prev) => !prev)}
-                      className="inline-flex items-center gap-1 rounded-lg px-2 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 hover:text-primary sm:px-3"
+                      className={`inline-flex items-center gap-1 rounded-lg px-2 py-2 text-xs font-medium transition-colors sm:px-3 ${
+                        isActive('/profile')
+                          ? 'bg-primary-light text-primary-dark'
+                          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                      }`}
                     >
                       Профиль
                       <span className={`transition-transform ${profileMenuOpen ? 'rotate-180' : ''}`}>▾</span>
@@ -484,9 +499,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                         <Link
                           href="/orders/new"
                           className={`block rounded-lg px-3 py-2 text-base font-medium transition-colors ${
-                            cartCount > 0
-                              ? 'bg-secondary-light text-secondary-dark hover:bg-emerald-200/90'
-                              : pathname === '/orders/new'
+                            pathname === '/orders/new'
                               ? 'bg-primary-light text-primary-dark'
                               : 'text-slate-800 hover:bg-slate-50 hover:text-primary'
                           }`}
