@@ -96,26 +96,44 @@ export default function ProductsPage() {
     ));
   };
 
-  const effectiveCategoryNameFilter = useMemo(() => {
+  const visibleCategoryTree = useMemo(() => {
+    const presentNames = new Set<string>();
+    products.forEach((product) => {
+      if (product.category) {
+        presentNames.add(product.category);
+      }
+      if (product.category_path) {
+        product.category_path
+          .split('>')
+          .map((part) => part.trim())
+          .filter(Boolean)
+          .forEach((part) => presentNames.add(part));
+      }
+    });
+
+    return PRODUCT_CATEGORY_TREE
+      .map((group) => {
+        const children = (group.children || []).filter((child) => presentNames.has(child.name));
+        const hasGroupProducts = presentNames.has(group.name);
+        if (!hasGroupProducts && children.length === 0) return null;
+        return {
+          ...group,
+          children,
+        };
+      })
+      .filter((group): group is NonNullable<typeof group> => group !== null);
+  }, [products]);
+
+  const selectedCategoryScope = useMemo(() => {
     if (!selectedCategory) return null;
     const selectedGroup = PRODUCT_CATEGORY_TREE.find((group) => group.name === selectedCategory);
     if (!selectedGroup) {
       return new Set<string>([selectedCategory]);
     }
-    const allowed = new Set<string>([selectedGroup.name]);
-    (selectedGroup.children || []).forEach((child) => allowed.add(child.name));
-    return allowed;
+    const scope = new Set<string>([selectedGroup.name]);
+    (selectedGroup.children || []).forEach((child) => scope.add(child.name));
+    return scope;
   }, [selectedCategory]);
-
-  const effectiveCategoryIdFilter = useMemo(() => {
-    if (!effectiveCategoryNameFilter) return null;
-    const ids = new Set<number>();
-    effectiveCategoryNameFilter.forEach((name) => {
-      const id = categoryIdsByName[name];
-      if (typeof id === 'number') ids.add(id);
-    });
-    return ids.size ? ids : null;
-  }, [effectiveCategoryNameFilter, categoryIdsByName]);
 
   const loadData = useCallback(async () => {
     try {
@@ -439,13 +457,28 @@ export default function ProductsPage() {
     }
     
     // Фильтр по категории
-    if (effectiveCategoryIdFilter && product.category_id != null) {
-      if (!effectiveCategoryIdFilter.has(Number(product.category_id))) {
-        return false;
+    if (selectedCategoryScope) {
+      const productCategoryTokens = new Set<string>();
+      if (product.category) {
+        productCategoryTokens.add(product.category);
       }
-    } else if (effectiveCategoryNameFilter) {
-      const productCategory = product.category || '';
-      if (!effectiveCategoryNameFilter.has(productCategory)) {
+      if (product.category_path) {
+        product.category_path
+          .split('>')
+          .map((part) => part.trim())
+          .filter(Boolean)
+          .forEach((part) => productCategoryTokens.add(part));
+      }
+      if (product.category_id != null) {
+        const byIdName = Object.keys(categoryIdsByName).find(
+          (name) => Number(categoryIdsByName[name]) === Number(product.category_id)
+        );
+        if (byIdName) {
+          productCategoryTokens.add(byIdName);
+        }
+      }
+      const intersectsScope = Array.from(productCategoryTokens).some((token) => selectedCategoryScope.has(token));
+      if (!intersectsScope) {
         return false;
       }
     }
@@ -541,13 +574,17 @@ export default function ProductsPage() {
                     setSelectedCategory('');
                     setExpandedCategoryGroups([]);
                   }}
-                  className="flex w-full items-center gap-2 rounded-lg px-1 py-1 text-left text-base text-slate-700 hover:bg-slate-200/60"
+                  className={`flex w-full items-center gap-2 rounded-lg px-1 py-1 text-left text-base transition-colors ${
+                    selectedCategory === ''
+                      ? 'bg-primary-light text-primary-dark'
+                      : 'text-slate-700 hover:bg-slate-200/60'
+                  }`}
                   aria-label="Все категории"
                 >
                   <span className="text-xl text-slate-400">‹</span>
                   <span>Все категории</span>
                 </button>
-                {PRODUCT_CATEGORY_TREE.map((group) => (
+                {visibleCategoryTree.map((group) => (
                   <div key={group.name} className="space-y-1">
                     <div className="flex items-center gap-1">
                       <button
@@ -596,6 +633,9 @@ export default function ProductsPage() {
                     )}
                   </div>
                 ))}
+                {visibleCategoryTree.length === 0 && (
+                  <p className="px-2 py-1 text-sm text-slate-500">Нет категорий с товарами</p>
+                )}
               </div>
             </div>
 
