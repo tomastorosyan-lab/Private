@@ -76,6 +76,8 @@ export default function ProductsPage() {
   const [minPrice, setMinPrice] = useState<string>('');
   const [maxPrice, setMaxPrice] = useState<string>('');
   const [expandedCategoryGroups, setExpandedCategoryGroups] = useState<string[]>([]);
+  const [categoryFilterQuery, setCategoryFilterQuery] = useState('');
+  const [supplierFilterQuery, setSupplierFilterQuery] = useState('');
   
   // Сортировка
   const [sortBy, setSortBy] = useState<string>('name'); // 'name', 'price_asc', 'price_desc', 'quantity_asc', 'quantity_desc', 'popularity_desc'
@@ -89,6 +91,8 @@ export default function ProductsPage() {
     setSearchQuery('');
     setSelectedCategory('');
     setSelectedSupplierId(null);
+    setCategoryFilterQuery('');
+    setSupplierFilterQuery('');
     setSelectedAvailability('all');
     setMinPrice('');
     setMaxPrice('');
@@ -133,6 +137,31 @@ export default function ProductsPage() {
       })
       .filter((group): group is NonNullable<typeof group> => group !== null);
   }, [products]);
+
+  const filteredCategoryTree = useMemo(() => {
+    const query = categoryFilterQuery.trim().toLowerCase();
+    if (!query) return visibleCategoryTree;
+
+    return visibleCategoryTree
+      .map((group) => {
+        const groupMatches = group.name.toLowerCase().includes(query);
+        const matchedChildren = (group.children || []).filter((child) =>
+          child.name.toLowerCase().includes(query)
+        );
+        if (!groupMatches && matchedChildren.length === 0) return null;
+        return {
+          ...group,
+          children: groupMatches ? group.children : matchedChildren,
+        };
+      })
+      .filter((group): group is NonNullable<typeof group> => group !== null);
+  }, [categoryFilterQuery, visibleCategoryTree]);
+
+  const filteredSuppliers = useMemo(() => {
+    const query = supplierFilterQuery.trim().toLowerCase();
+    if (!query) return suppliers;
+    return suppliers.filter((supplier) => supplier.full_name.toLowerCase().includes(query));
+  }, [supplierFilterQuery, suppliers]);
 
   const selectedCategoryScope = useMemo(() => {
     if (!selectedCategory) return null;
@@ -592,12 +621,20 @@ export default function ProductsPage() {
           <div className="rounded-3xl bg-slate-100 px-4 py-5 shadow-sm xl:sticky xl:top-24">
             <div className="mb-6">
               <h3 className="text-3xl font-semibold text-slate-900">Категория</h3>
+              <input
+                type="search"
+                value={categoryFilterQuery}
+                onChange={(e) => setCategoryFilterQuery(e.target.value)}
+                placeholder="Поиск категории"
+                className="mt-3 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
               <div className="mt-3 space-y-1">
                 <button
                   type="button"
                   onClick={() => {
                     setSelectedCategory('');
                     setExpandedCategoryGroups([]);
+                    setCategoryFilterQuery('');
                   }}
                   className={`flex w-full items-center gap-2 rounded-lg px-1 py-1 text-left text-base transition-colors ${
                     selectedCategory === ''
@@ -609,7 +646,7 @@ export default function ProductsPage() {
                   <span className="text-xl text-slate-400">‹</span>
                   <span>Все категории</span>
                 </button>
-                {visibleCategoryTree.map((group) => (
+                {filteredCategoryTree.map((group) => (
                   <div key={group.name} className="space-y-1">
                     <div className="flex items-center gap-1">
                       <button
@@ -638,7 +675,7 @@ export default function ProductsPage() {
                         <span className="line-clamp-2">{group.name}</span>
                       </button>
                     </div>
-                    {expandedCategoryGroups.includes(group.name) && (
+                    {(expandedCategoryGroups.includes(group.name) || categoryFilterQuery.trim()) && (
                       <div className="ml-8 space-y-1">
                         {group.children?.map((child) => (
                           <button
@@ -658,8 +695,10 @@ export default function ProductsPage() {
                     )}
                   </div>
                 ))}
-                {visibleCategoryTree.length === 0 && (
-                  <p className="px-2 py-1 text-sm text-slate-500">Нет категорий с товарами</p>
+                {filteredCategoryTree.length === 0 && (
+                  <p className="px-2 py-1 text-sm text-slate-500">
+                    {categoryFilterQuery.trim() ? 'Категории не найдены' : 'Нет категорий с товарами'}
+                  </p>
                 )}
               </div>
             </div>
@@ -699,11 +738,21 @@ export default function ProductsPage() {
                       className="absolute z-20 mt-2 max-h-72 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-lg"
                       role="listbox"
                     >
+                      <div className="sticky top-0 z-10 bg-white p-1">
+                        <input
+                          type="search"
+                          value={supplierFilterQuery}
+                          onChange={(e) => setSupplierFilterQuery(e.target.value)}
+                          placeholder="Поиск поставщика"
+                          className="w-full rounded-lg border border-slate-200 px-2 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                        />
+                      </div>
                       <button
                         type="button"
                         onClick={() => {
                           setSelectedSupplierId(null);
                           setIsSupplierDropdownOpen(false);
+                          setSupplierFilterQuery('');
                           router.replace('/products');
                         }}
                         className={`flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm ${
@@ -715,13 +764,14 @@ export default function ProductsPage() {
                         <span className="inline-flex h-6 w-6 items-center justify-center rounded bg-slate-200 text-[10px] font-semibold text-slate-600">∗</span>
                         <span className="truncate">Все поставщики</span>
                       </button>
-                      {suppliers.map((supplier) => (
+                      {filteredSuppliers.map((supplier) => (
                         <button
                           key={supplier.id}
                           type="button"
                           onClick={() => {
                             setSelectedSupplierId(supplier.id);
                             setIsSupplierDropdownOpen(false);
+                            setSupplierFilterQuery('');
                             router.replace(`/products?supplier_id=${supplier.id}`);
                           }}
                           className={`flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm ${
@@ -744,6 +794,9 @@ export default function ProductsPage() {
                           <span className="truncate">{supplier.full_name}</span>
                         </button>
                       ))}
+                      {filteredSuppliers.length === 0 && (
+                        <p className="px-2 py-2 text-sm text-slate-500">Поставщики не найдены</p>
+                      )}
                     </div>
                   )}
                 </div>
