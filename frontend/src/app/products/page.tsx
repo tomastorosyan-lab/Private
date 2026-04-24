@@ -569,7 +569,7 @@ export default function ProductsPage() {
                         onClick={() => setSelectedCategory(group.name)}
                         className={`flex-1 rounded-lg px-2 py-1 text-left text-base transition-colors ${
                           selectedCategory === group.name
-                            ? 'bg-blue-100 text-blue-900'
+                          ? 'bg-primary-light text-primary-dark'
                             : 'text-slate-700 hover:bg-slate-200/60'
                         }`}
                       >
@@ -585,7 +585,7 @@ export default function ProductsPage() {
                             onClick={() => setSelectedCategory(child.name)}
                             className={`block w-full rounded-lg px-2 py-1 text-left text-sm transition-colors ${
                               selectedCategory === child.name
-                                ? 'bg-blue-100 text-blue-900'
+                            ? 'bg-primary-light text-primary-dark'
                                 : 'text-slate-700 hover:bg-slate-200/60'
                             }`}
                           >
@@ -616,7 +616,7 @@ export default function ProductsPage() {
                       name="delivery"
                       checked={deliveryOption === option.value}
                       onChange={() => setDeliveryOption(option.value as 'any' | '1h' | 'today' | 'tomorrow' | '3d' | '7d')}
-                      className="h-5 w-5 accent-blue-600"
+                      className="h-5 w-5 accent-primary-dark"
                     />
                     <span>{option.label}</span>
                   </label>
@@ -635,14 +635,14 @@ export default function ProductsPage() {
                   value={minPrice}
                   onChange={(e) => setMinPrice(e.target.value)}
                   placeholder="20"
-                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-base text-slate-900 focus:border-blue-400 focus:outline-none"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-base text-slate-900 focus:border-primary focus:outline-none"
                 />
                 <input
                   type="number"
                   value={maxPrice}
                   onChange={(e) => setMaxPrice(e.target.value)}
                   placeholder="769823"
-                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-base text-slate-900 focus:border-blue-400 focus:outline-none"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-base text-slate-900 focus:border-primary focus:outline-none"
                 />
               </div>
               <button

@@ -245,15 +245,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 className="flex items-center px-2 py-2 text-lg font-semibold tracking-tight text-slate-800 sm:text-xl"
               >
                 <img
-                  src="/logo.svg"
+                  src="/logo.png"
                   alt="абхазхаб"
-                  className="mr-2 h-8 w-8 flex-shrink-0"
+                  className="mr-2 h-8 w-8 flex-shrink-0 rounded-md object-cover"
                 />
                 <span className="hidden sm:inline">абхазхаб</span>
               </Link>
               <Link
                 href={user?.user_type === 'supplier' ? '/products/manage' : '/products'}
-                className="hidden rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 sm:inline-flex"
+                className="hidden rounded-xl bg-primary-dark px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary sm:inline-flex"
               >
                 Каталог
               </Link>
@@ -278,11 +278,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 value={headerSearchQuery}
                 onChange={(e) => setHeaderSearchQuery(e.target.value)}
                 placeholder="Искать в абхазхаб"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary-light"
               />
               <button
                 type="submit"
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                className="rounded-lg bg-primary-dark px-4 py-2 text-sm font-semibold text-white hover:bg-primary"
               >
                 🔎
               </button>

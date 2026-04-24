@@ -973,7 +973,7 @@ export default function ManageProductsPage() {
                           <button
                             type="button"
                             onClick={() => openEdit(Number(product.id))}
-                            className="text-primary hover:text-blue-900 text-xs sm:text-sm mr-2 sm:mr-3"
+                            className="text-primary hover:text-primary-dark text-xs sm:text-sm mr-2 sm:mr-3"
                           >
                             <span className="hidden sm:inline">Изменить</span>
                             <span className="sm:hidden">✏️</span>

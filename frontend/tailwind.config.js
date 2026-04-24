@@ -30,11 +30,11 @@ module.exports = {
       },
       colors: {
         primary: {
-          DEFAULT: '#2563eb',
+          DEFAULT: '#206676',
           foreground: '#ffffff',
-          light: '#eff6ff',
-          dark: '#1d4ed8',
-          muted: '#dbeafe',
+          light: '#e6f1f3',
+          dark: '#19535f',
+          muted: '#c4dde2',
         },
         secondary: {
           DEFAULT: '#059669',

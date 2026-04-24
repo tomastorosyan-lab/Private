@@ -154,10 +154,10 @@ export default function AboutPage() {
       {/* Кнопка возврата */}
       <div className="text-center">
         <Link
-          href="/"
+          href="/products"
           className="inline-block rounded-lg bg-primary-dark px-6 py-3 text-sm font-medium text-white shadow-surface transition-colors hover:bg-primary"
         >
-          Вернуться на главную
+          Перейти в каталог
         </Link>
       </div>
     </div>
