@@ -70,10 +70,11 @@ export default function RegisterPage() {
     }
     try {
       setIsLoading(true);
-      await api.sendRegisterCode(formData.email.trim().toLowerCase());
-      setCodeSent(true);
-      setIsEmailVerified(false);
-      setInfo('Код отправлен на указанную почту');
+      const result = await api.sendRegisterCode(formData.email.trim().toLowerCase());
+      const verificationRequired = result.verification_required !== false;
+      setCodeSent(verificationRequired);
+      setIsEmailVerified(!verificationRequired);
+      setInfo(result.message || (verificationRequired ? 'Код отправлен на указанную почту' : 'Можно завершить регистрацию без кода'));
     } catch (err: any) {
       setError(err.message || 'Не удалось отправить код');
     } finally {

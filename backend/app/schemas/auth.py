@@ -24,6 +24,10 @@ class EmailVerificationConfirm(BaseModel):
 
 class EmailVerificationResponse(BaseModel):
     message: str = Field(..., description="Результат операции")
+    verification_required: bool = Field(
+        default=True,
+        description="Требуется ли подтверждение email кодом для завершения регистрации",
+    )
 
 
 class UserResponse(BaseModel):

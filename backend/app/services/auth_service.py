@@ -26,7 +26,7 @@ class AuthService:
     def _normalize_email(email: str) -> str:
         return email.strip().lower()
 
-    async def send_registration_code(self, email: str) -> None:
+    async def send_registration_code(self, email: str) -> bool:
         normalized_email = self._normalize_email(email)
         existing_user = self.db.query(User.id).filter(User.email == normalized_email).first()
         if existing_user:
@@ -34,6 +34,8 @@ class AuthService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Пользователь с таким email уже существует",
             )
+        if not settings.EMAIL_VERIFICATION_ENABLED or not EmailService.is_verification_configured():
+            return False
 
         code = f"{secrets.randbelow(1000000):06d}"
         now = datetime.now(timezone.utc)
@@ -73,6 +75,7 @@ class AuthService:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=str(exc),
             )
+        return True
 
     async def confirm_registration_code(self, email: str, code: str) -> None:
         normalized_email = self._normalize_email(email)
@@ -121,9 +124,10 @@ class AuthService:
         hashed_password = get_password_hash(user_data.password)
         integration_type = "manual" if user_data.user_type == UserType.SUPPLIER else None
         
+        verification_required = settings.EMAIL_VERIFICATION_ENABLED and EmailService.is_verification_configured()
         verification = self.db.query(EmailVerification).filter(EmailVerification.email == normalized_email).first()
         now = datetime.now(timezone.utc)
-        if not verification or not verification.verified_until or verification.verified_until < now:
+        if verification_required and (not verification or not verification.verified_until or verification.verified_until < now):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Подтвердите email кодом перед регистрацией",
@@ -142,8 +146,9 @@ class AuthService:
         self.db.refresh(new_user)
 
         # Одноразовое подтверждение: после регистрации удаляем запись кода
-        self.db.delete(verification)
-        self.db.commit()
+        if verification:
+            self.db.delete(verification)
+            self.db.commit()
         
         return new_user
     

@@ -274,7 +274,7 @@ class ApiClient {
   }
 
   async sendRegisterCode(email: string) {
-    return this.request<{ message: string }>(`/auth/register/send-code`, {
+    return this.request<{ message: string; verification_required?: boolean }>(`/auth/register/send-code`, {
       method: 'POST',
       body: JSON.stringify({ email }),
     });

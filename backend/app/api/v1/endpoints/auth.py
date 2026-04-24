@@ -37,8 +37,16 @@ async def send_register_code(
     db: Session = Depends(get_db),
 ):
     service = AuthService(db)
-    await service.send_registration_code(payload.email)
-    return {"message": "Код подтверждения отправлен на email"}
+    verification_required = await service.send_registration_code(payload.email)
+    if verification_required:
+        return {
+            "message": "Код подтверждения отправлен на email",
+            "verification_required": True,
+        }
+    return {
+        "message": "Email-подтверждение временно недоступно, регистрацию можно завершить без кода",
+        "verification_required": False,
+    }
 
 
 @router.post(
