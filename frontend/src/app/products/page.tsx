@@ -149,11 +149,10 @@ export default function ProductsPage() {
     try {
       setIsLoading(true);
 
-      const supplierIdParam = searchParams.get('supplier_id');
-      const supplierId = supplierIdParam ? Number(supplierIdParam) : undefined;
-
+      // Всегда загружаем полный каталог: фильтр по поставщику только на клиенте (selectedSupplierId).
+      // Иначе при ?supplier_id=… в URL список товаров ограничен одним поставщиком и смена фильтра даёт пустую выдачу.
       const [productsData, suppliersData, categoriesData, ordersData] = await Promise.all([
-        api.getProducts({ limit: 1000, supplier_id: supplierId }),
+        api.getProducts({ limit: 1000 }),
         api.getDistributors({ limit: 100 }),
         api.getCategories().catch(() => ({ tree: [] })),
         api.getOrders({ limit: 1000 }).catch(() => []),
@@ -191,7 +190,7 @@ export default function ProductsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [searchParams]);
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -705,6 +704,7 @@ export default function ProductsPage() {
                         onClick={() => {
                           setSelectedSupplierId(null);
                           setIsSupplierDropdownOpen(false);
+                          router.replace('/products');
                         }}
                         className={`flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm ${
                           selectedSupplierId === null
@@ -722,6 +722,7 @@ export default function ProductsPage() {
                           onClick={() => {
                             setSelectedSupplierId(supplier.id);
                             setIsSupplierDropdownOpen(false);
+                            router.replace(`/products?supplier_id=${supplier.id}`);
                           }}
                           className={`flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm ${
                             selectedSupplierId === supplier.id
