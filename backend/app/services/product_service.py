@@ -56,6 +56,7 @@ class ProductService:
         supplier_id: Optional[int] = None,
         category: Optional[str] = None,
         category_id: Optional[int] = None,
+        include_hidden: bool = False,
     ) -> List[Product]:
         """Получение списка товаров"""
         query = self.db.query(Product)
@@ -70,6 +71,9 @@ class ProductService:
         
         if supplier_id:
             query = query.filter(Product.supplier_id == supplier_id)
+        
+        if not include_hidden:
+            query = query.filter(Product.is_hidden.is_(False))
         
         if category_id is not None:
             query = query.filter(Product.category_id == category_id)
@@ -102,6 +106,8 @@ class ProductService:
         if search_params.supplier_id:
             query = query.filter(Product.supplier_id == search_params.supplier_id)
         
+        query = query.filter(Product.is_hidden.is_(False))
+        
         # TODO: Добавить фильтрацию по цене и наличию через Inventory
         
         return query.all()
@@ -129,6 +135,7 @@ class ProductService:
             category_id=None,
             unit=product_data.unit or "шт",  # По умолчанию "шт"
             items_per_box=product_data.items_per_box,
+            is_hidden=bool(product_data.is_hidden),
             supplier_id=supplier_id
         )
         resolved_id, resolved_name, resolved_path = self._resolve_category_data(
@@ -207,6 +214,8 @@ class ProductService:
             product.items_per_box = payload["items_per_box"]
         if "image_url" in payload:
             product.image_url = payload["image_url"]
+        if "is_hidden" in payload and payload["is_hidden"] is not None:
+            product.is_hidden = bool(payload["is_hidden"])
 
         if inv_quantity is not None or inv_price is not None:
             inv_rows = (

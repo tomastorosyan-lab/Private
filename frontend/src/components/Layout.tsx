@@ -229,10 +229,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   const handleHeaderSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (user?.user_type === 'supplier') {
-      router.push('/products/manage');
-      return;
-    }
     router.push('/products');
   };
 
@@ -264,7 +260,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <span className="hidden sm:inline">абхазхаб</span>
               </Link>
               <Link
-                href={user?.user_type === 'supplier' ? '/products/manage' : '/products'}
+                href="/products"
                 className="hidden rounded-xl bg-primary-dark px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary sm:inline-flex"
               >
                 Каталог
@@ -428,7 +424,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <div className="px-2 pt-2 pb-3 space-y-1">
                 {user ? (
                   <>
-                    {(user.user_type === 'customer' || user.user_type === 'admin') && (
+                    {(user.user_type === 'customer' || user.user_type === 'admin' || user.user_type === 'supplier') && (
                       <Link
                         href="/products"
                         className={`block rounded-lg px-3 py-2 text-base font-medium transition-colors ${

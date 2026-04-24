@@ -41,6 +41,7 @@ async def get_products(
     supplier_id: Optional[int] = Query(None, description="ID поставщика для фильтрации"),
     category: Optional[str] = Query(None, description="Категория товара для фильтрации (legacy)"),
     category_id: Optional[int] = Query(None, description="ID категории товара для фильтрации"),
+    include_hidden: bool = Query(False, description="Включать скрытые товары (для кабинета поставщика)"),
     db: Session = Depends(get_db)
 ):
     """
@@ -57,6 +58,7 @@ async def get_products(
         supplier_id=supplier_id,
         category=category,
         category_id=category_id,
+        include_hidden=include_hidden,
     )
 
 

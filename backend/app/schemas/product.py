@@ -16,6 +16,7 @@ class ProductResponse(BaseModel):
     unit: str = Field(..., description="Единица измерения (всегда 'шт')", example="шт")
     items_per_box: Optional[int] = Field(None, description="Количество штук в коробке", example=12)
     image_url: Optional[str] = Field(None, description="URL изображения товара")
+    is_hidden: bool = Field(False, description="Скрыт ли товар из витрины")
     supplier_id: int = Field(..., description="ID поставщика (пользователь типа supplier)")
     
     class Config:
@@ -32,6 +33,7 @@ class ProductCreate(BaseModel):
     items_per_box: Optional[int] = Field(None, description="Количество штук в коробке", example=12, ge=1)
     quantity: Optional[Decimal] = Field(None, description="Количество товара в наличии (опционально, для создания остатков)", ge=0, example=100.5)
     price: Optional[Decimal] = Field(None, description="Цена за единицу товара (опционально, для создания остатков)", gt=0, example=150.00)
+    is_hidden: Optional[bool] = Field(False, description="Скрыть товар из витрины сразу после создания")
 
 
 class ProductUpdate(BaseModel):
@@ -43,6 +45,7 @@ class ProductUpdate(BaseModel):
     unit: Optional[str] = Field(None, description="Единица измерения (всегда 'шт')")
     items_per_box: Optional[int] = Field(None, description="Количество штук в коробке", ge=1)
     image_url: Optional[str] = Field(None, description="URL изображения товара")
+    is_hidden: Optional[bool] = Field(None, description="Скрыт ли товар из витрины")
     quantity: Optional[Decimal] = Field(
         None,
         description="Остаток на складе (обновляет связанную запись inventory поставщика товара)",

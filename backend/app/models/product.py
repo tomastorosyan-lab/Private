@@ -1,7 +1,7 @@
 """
 Модель товара
 """
-from sqlalchemy import Column, Integer, String, Numeric, ForeignKey, Text, DateTime
+from sqlalchemy import Column, Integer, String, Numeric, ForeignKey, Text, DateTime, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
@@ -20,6 +20,7 @@ class Product(Base):
     unit = Column(String, nullable=False, default="шт")  # единица измерения - всегда "шт"
     items_per_box = Column(Integer, nullable=True)  # количество штук в коробке
     image_url = Column(String, nullable=True)  # URL изображения товара
+    is_hidden = Column(Boolean, nullable=False, default=False, server_default="false")  # скрыт ли товар из витрины
     
     # Связь с поставщиком (пользователь типа supplier)
     supplier_id = Column(Integer, ForeignKey("users.id"), nullable=False)

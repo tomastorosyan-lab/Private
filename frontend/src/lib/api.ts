@@ -57,6 +57,7 @@ export interface Product {
   unit: string;
   items_per_box?: number | null;
   image_url?: string | null;
+  is_hidden?: boolean;
   supplier_id: number;
 }
 
@@ -352,6 +353,7 @@ class ApiClient {
     supplier_id?: number;
     category_id?: number;
     category?: string;
+    include_hidden?: boolean;
   }) {
     const queryParams = new URLSearchParams();
     if (params) {
@@ -377,6 +379,7 @@ class ApiClient {
     category_path?: string;
     unit: string;
     items_per_box?: number;
+    is_hidden?: boolean;
     supplier_id: number;
     quantity?: number;
     price?: number;
@@ -397,6 +400,7 @@ class ApiClient {
     unit?: string;
     items_per_box?: number;
     image_url?: string | null;
+    is_hidden?: boolean;
     /** Остаток и цена обновляют запись inventory на сервере (тот же PATCH, что и поля товара). */
     quantity?: number;
     price?: number;
@@ -410,6 +414,7 @@ class ApiClient {
     if (productData.unit !== undefined) body.unit = productData.unit;
     if (productData.items_per_box !== undefined) body.items_per_box = productData.items_per_box;
     if (productData.image_url !== undefined) body.image_url = productData.image_url;
+    if (productData.is_hidden !== undefined) body.is_hidden = productData.is_hidden;
     if (productData.quantity !== undefined) body.quantity = productData.quantity;
     if (productData.price !== undefined) body.price = productData.price;
     return this.request<Product>(`/products/${productId}`, {

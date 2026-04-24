@@ -30,6 +30,7 @@ interface Product {
   unit: string;
   items_per_box?: number | null;
   image_url?: string | null;
+  is_hidden?: boolean;
   supplier_id: number;
 }
 
@@ -315,15 +316,15 @@ export default function ManageProductsPage() {
       setError('');
       const currentUser = authService.getUser();
       const sid = currentUser?.id;
-      const data = await api.getProducts({ supplier_id: sid, limit: 1000 });
-      setProducts(data);
+      const withHidden = await api.getProducts({ supplier_id: sid, limit: 1000, include_hidden: true });
+      setProducts(withHidden);
 
       const nextMap: Record<number, InventoryRow> = {};
-      if (currentUser?.user_type === 'admin' && data.length > 0) {
+      if (currentUser?.user_type === 'admin' && withHidden.length > 0) {
         const invByProduct = await Promise.all(
-          data.map((p: Product) => api.getProductInventory(Number(p.id)))
+          withHidden.map((p: Product) => api.getProductInventory(Number(p.id)))
         );
-        data.forEach((p: Product, idx: number) => {
+        withHidden.forEach((p: Product, idx: number) => {
           const pid = Number(p.id);
           const rows = Array.isArray(invByProduct[idx]) ? invByProduct[idx] : [];
           const match = pickInventoryForProduct(rows as InventoryRow[], Number(p.supplier_id));
@@ -563,6 +564,8 @@ export default function ManageProductsPage() {
     }
   };
 
+  const hiddenCount = products.filter((p) => p.is_hidden).length;
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -576,7 +579,15 @@ export default function ManageProductsPage() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center flex-wrap gap-4">
-        <h1 className="text-3xl font-bold text-gray-900">Управление товарами</h1>
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Управление товарами</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Скрытых товаров:{' '}
+            <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800 ring-1 ring-amber-200">
+              {hiddenCount}
+            </span>
+          </p>
+        </div>
         {!formVisible && (
           <button
             type="button"
@@ -897,17 +908,6 @@ export default function ManageProductsPage() {
           </div>
         ) : (
           <>
-            {!formVisible && (
-              <div className="p-4 border-b border-gray-200">
-                <button
-                  type="button"
-                  onClick={openCreate}
-                  className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary-dark"
-                >
-                  + Создать товар
-                </button>
-              </div>
-            )}
             <div className="overflow-x-auto -mx-4 sm:mx-0">
               <table className="w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
@@ -929,6 +929,9 @@ export default function ManageProductsPage() {
                     </th>
                     <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                       Цена
+                    </th>
+                    <th className="hidden md:table-cell px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      Статус
                     </th>
                     <th className="px-2 sm:px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
                       Действия
@@ -969,7 +972,36 @@ export default function ManageProductsPage() {
                         <td className="px-2 sm:px-4 py-4 text-sm text-gray-500 whitespace-nowrap">
                           {inv ? `${parseFloat(String(inv.price)).toFixed(2)} ₽` : '—'}
                         </td>
+                        <td className="hidden md:table-cell px-2 sm:px-4 py-4 text-sm whitespace-nowrap">
+                          {product.is_hidden ? (
+                            <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700">
+                              Скрыт
+                            </span>
+                          ) : (
+                            <span className="rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
+                              Показан
+                            </span>
+                          )}
+                        </td>
                         <td className="px-2 sm:px-4 py-4 text-right text-sm font-medium whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                setError('');
+                                await api.updateProduct(Number(product.id), {
+                                  is_hidden: !Boolean(product.is_hidden),
+                                });
+                                await loadProducts({ silent: true });
+                                notifyCatalogRefresh();
+                              } catch (err: any) {
+                                setError(err.message || 'Ошибка изменения видимости товара');
+                              }
+                            }}
+                            className="text-amber-700 hover:text-amber-900 text-xs sm:text-sm mr-2 sm:mr-3"
+                          >
+                            {product.is_hidden ? 'Показать' : 'Скрыть'}
+                          </button>
                           <button
                             type="button"
                             onClick={() => openEdit(Number(product.id))}

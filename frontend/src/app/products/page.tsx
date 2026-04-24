@@ -81,6 +81,7 @@ export default function ProductsPage() {
   // Отслеживаем предыдущий supplier_id из URL для сброса фильтров
   const prevSupplierIdRef = useRef<string | null>(null);
   const supplierDropdownRef = useRef<HTMLDivElement | null>(null);
+  const isSupplierUser = authService.getUser()?.user_type === 'supplier';
 
   // Функция сброса всех фильтров
   const resetFilters = () => {
@@ -216,13 +217,6 @@ export default function ProductsPage() {
       return;
     }
 
-    const user = authService.getUser();
-    // Поставщики не должны иметь доступ к каталогу товаров
-    if (user && user.user_type === 'supplier') {
-      router.push('/products/manage');
-      return;
-    }
-
     // Получаем supplier_id из URL параметров
     const supplierIdParam = searchParams.get('supplier_id');
     if (supplierIdParam) {
@@ -237,8 +231,6 @@ export default function ProductsPage() {
   useEffect(() => {
     const onCatalogRefresh = () => {
       if (!authService.isAuthenticated()) return;
-      const u = authService.getUser();
-      if (u?.user_type === 'supplier') return;
       loadData();
     };
     window.addEventListener('products-catalog-refresh', onCatalogRefresh);
@@ -261,7 +253,6 @@ export default function ProductsPage() {
     const onVisible = () => {
       if (document.visibilityState !== 'visible') return;
       if (!authService.isAuthenticated()) return;
-      if (authService.getUser()?.user_type === 'supplier') return;
       loadData();
     };
     document.addEventListener('visibilitychange', onVisible);
@@ -326,6 +317,11 @@ export default function ProductsPage() {
   };
 
   const addToCart = (product: Product, quantity: number = 1) => {
+    if (isSupplierUser) {
+      setError('Поставщик может просматривать каталог, но не может оформлять заказы');
+      setSuccess('');
+      return;
+    }
     const productInventory = inventoryRowForProduct(inventory, product);
     if (!productInventory) {
       setError('Товар отсутствует на складе');
@@ -861,7 +857,13 @@ export default function ProductsPage() {
                     </div>
                     
                     {/* Нижняя часть: управление количеством и кнопка */}
-                    {productInventory && parseFloat(productInventory.quantity) > 0 ? (
+                    {isSupplierUser ? (
+                      <div>
+                        <div className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700">
+                          Для поставщиков заказ из каталога недоступен
+                        </div>
+                      </div>
+                    ) : productInventory && parseFloat(productInventory.quantity) > 0 ? (
                       <div className="flex flex-col gap-2">
                         <div className="flex items-center gap-1.5 flex-wrap">
                         {itemsPerBox > 1 && (
