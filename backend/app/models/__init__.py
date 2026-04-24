@@ -6,6 +6,7 @@ from app.models.category import Category
 from app.models.product import Product
 from app.models.order import Order, OrderItem
 from app.models.inventory import Inventory
+from app.models.email_verification import EmailVerification
 
 __all__ = [
     "User",
@@ -14,5 +15,6 @@ __all__ = [
     "Order",
     "OrderItem",
     "Inventory",
+    "EmailVerification",
 ]
 

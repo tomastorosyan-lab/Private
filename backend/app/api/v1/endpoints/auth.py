@@ -11,11 +11,49 @@ from app.core.config import settings
 from app.core.dependencies import get_current_user as get_current_user_dep
 from app.core.permissions import require_admin
 from app.core.upload import save_uploaded_file, delete_file
-from app.schemas.auth import Token, UserCreate, UserResponse, UserUpdate
+from app.schemas.auth import (
+    Token,
+    UserCreate,
+    UserResponse,
+    UserUpdate,
+    EmailVerificationRequest,
+    EmailVerificationConfirm,
+    EmailVerificationResponse,
+)
 from app.services.auth_service import AuthService
 from app.models.user import User
 
 router = APIRouter()
+
+
+@router.post(
+    "/register/send-code",
+    response_model=EmailVerificationResponse,
+    summary="Отправка кода подтверждения на email",
+    tags=["Аутентификация"],
+)
+async def send_register_code(
+    payload: EmailVerificationRequest,
+    db: Session = Depends(get_db),
+):
+    service = AuthService(db)
+    await service.send_registration_code(payload.email)
+    return {"message": "Код подтверждения отправлен на email"}
+
+
+@router.post(
+    "/register/confirm-code",
+    response_model=EmailVerificationResponse,
+    summary="Подтверждение кода регистрации",
+    tags=["Аутентификация"],
+)
+async def confirm_register_code(
+    payload: EmailVerificationConfirm,
+    db: Session = Depends(get_db),
+):
+    service = AuthService(db)
+    await service.confirm_registration_code(payload.email, payload.code)
+    return {"message": "Email успешно подтвержден"}
 
 
 @router.post(

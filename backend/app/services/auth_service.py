@@ -5,22 +5,101 @@ from decimal import Decimal
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from fastapi import HTTPException, status
+from datetime import datetime, timedelta, timezone
+import secrets
 from app.models.user import User, UserType
 from app.schemas.auth import UserCreate, UserResponse, UserUpdate
 from app.core.security import get_password_hash, verify_password, decode_access_token
 from app.models.order import Order, OrderItem
 from app.models.product import Product
 from app.models.inventory import Inventory
+from app.models.email_verification import EmailVerification
+from app.services.email_service import EmailService
+from app.core.config import settings
 
 
 class AuthService:
     def __init__(self, db: Session):
         self.db = db
     
+    @staticmethod
+    def _normalize_email(email: str) -> str:
+        return email.strip().lower()
+
+    async def send_registration_code(self, email: str) -> None:
+        normalized_email = self._normalize_email(email)
+        existing_user = self.db.query(User.id).filter(User.email == normalized_email).first()
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Пользователь с таким email уже существует",
+            )
+
+        code = f"{secrets.randbelow(1000000):06d}"
+        now = datetime.now(timezone.utc)
+        expires_at = now + timedelta(minutes=settings.EMAIL_VERIFICATION_CODE_TTL_MINUTES)
+
+        row = self.db.query(EmailVerification).filter(EmailVerification.email == normalized_email).first()
+        if row:
+            row.code_hash = get_password_hash(code)
+            row.attempts = 0
+            row.expires_at = expires_at
+            row.verified_until = None
+        else:
+            row = EmailVerification(
+                email=normalized_email,
+                code_hash=get_password_hash(code),
+                attempts=0,
+                expires_at=expires_at,
+                verified_until=None,
+            )
+            self.db.add(row)
+        self.db.commit()
+
+        try:
+            EmailService.send_registration_verification_code(normalized_email, code)
+        except Exception:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Не удалось отправить код подтверждения на email",
+            )
+
+    async def confirm_registration_code(self, email: str, code: str) -> None:
+        normalized_email = self._normalize_email(email)
+        row = self.db.query(EmailVerification).filter(EmailVerification.email == normalized_email).first()
+        if not row:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Сначала запросите код подтверждения",
+            )
+        now = datetime.now(timezone.utc)
+        if row.expires_at < now:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Код подтверждения истек. Запросите новый код",
+            )
+        if row.attempts >= 5:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Превышено число попыток ввода кода. Запросите новый код",
+            )
+        if not verify_password(code, row.code_hash):
+            row.attempts += 1
+            self.db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Неверный код подтверждения",
+            )
+
+        row.verified_until = now + timedelta(minutes=settings.EMAIL_VERIFICATION_WINDOW_MINUTES)
+        row.attempts = 0
+        self.db.commit()
+
     async def register_user(self, user_data: UserCreate) -> User:
         """Регистрация нового пользователя"""
+        normalized_email = self._normalize_email(user_data.email)
         # Проверка существования пользователя (проверяем только email, чтобы избежать проблем с enum)
-        existing_user = self.db.query(User.id).filter(User.email == user_data.email).first()
+        existing_user = self.db.query(User.id).filter(User.email == normalized_email).first()
         if existing_user:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -32,8 +111,16 @@ class AuthService:
         hashed_password = get_password_hash(user_data.password)
         integration_type = "manual" if user_data.user_type == UserType.SUPPLIER else None
         
+        verification = self.db.query(EmailVerification).filter(EmailVerification.email == normalized_email).first()
+        now = datetime.now(timezone.utc)
+        if not verification or not verification.verified_until or verification.verified_until < now:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Подтвердите email кодом перед регистрацией",
+            )
+
         new_user = User(
-            email=user_data.email,
+            email=normalized_email,
             hashed_password=hashed_password,
             full_name=user_data.full_name,
             user_type=user_data.user_type,
@@ -43,6 +130,10 @@ class AuthService:
         self.db.add(new_user)
         self.db.commit()
         self.db.refresh(new_user)
+
+        # Одноразовое подтверждение: после регистрации удаляем запись кода
+        self.db.delete(verification)
+        self.db.commit()
         
         return new_user
     

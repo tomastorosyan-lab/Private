@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { authService } from '@/lib/auth';
+import { api } from '@/lib/api';
 
 // Функции валидации
 const validateEmail = (email: string): string | null => {
@@ -52,8 +53,52 @@ export default function RegisterPage() {
     user_type: 'customer' as 'supplier' | 'customer',
   });
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [verificationCode, setVerificationCode] = useState('');
+  const [codeSent, setCodeSent] = useState(false);
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
+
+  const handleSendCode = async () => {
+    setError('');
+    setInfo('');
+    const emailError = validateEmail(formData.email);
+    if (emailError) {
+      setFieldErrors((prev) => ({ ...prev, email: emailError }));
+      return;
+    }
+    try {
+      setIsLoading(true);
+      await api.sendRegisterCode(formData.email.trim().toLowerCase());
+      setCodeSent(true);
+      setIsEmailVerified(false);
+      setInfo('Код отправлен на указанную почту');
+    } catch (err: any) {
+      setError(err.message || 'Не удалось отправить код');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleConfirmCode = async () => {
+    setError('');
+    setInfo('');
+    if (!verificationCode || verificationCode.trim().length !== 6) {
+      setError('Введите 6-значный код из письма');
+      return;
+    }
+    try {
+      setIsLoading(true);
+      await api.confirmRegisterCode(formData.email.trim().toLowerCase(), verificationCode.trim());
+      setIsEmailVerified(true);
+      setInfo('Email подтвержден. Теперь можно завершить регистрацию.');
+    } catch (err: any) {
+      setError(err.message || 'Неверный код подтверждения');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,7 +124,16 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     try {
-      await authService.register(formData);
+      if (!isEmailVerified) {
+        setError('Сначала подтвердите email 6-значным кодом');
+        setIsLoading(false);
+        return;
+      }
+      await api.register({
+        ...formData,
+        email: formData.email.trim().toLowerCase(),
+      });
+      await authService.login(formData.email.trim().toLowerCase(), formData.password);
       router.push('/products');
     } catch (err: any) {
       setError(err.message || 'Ошибка регистрации. Попробуйте еще раз.');
@@ -109,6 +163,11 @@ export default function RegisterPage() {
           {error && (
             <div className="rounded-lg border border-red-200/80 bg-red-50/90 p-4 backdrop-blur-sm">
               <p className="text-sm leading-snug text-red-800">{error}</p>
+            </div>
+          )}
+          {info && (
+            <div className="rounded-lg border border-emerald-200/80 bg-emerald-50/90 p-4 backdrop-blur-sm">
+              <p className="text-sm leading-snug text-emerald-800">{info}</p>
             </div>
           )}
           <div className="space-y-4">
@@ -152,8 +211,12 @@ export default function RegisterPage() {
                 }`}
                 placeholder="email@example.com"
                 value={formData.email}
+                disabled={isEmailVerified}
                 onChange={(e) => {
                   setFormData({ ...formData, email: e.target.value });
+                  setIsEmailVerified(false);
+                  setCodeSent(false);
+                  setVerificationCode('');
                   if (fieldErrors.email) {
                     setFieldErrors({ ...fieldErrors, email: '' });
                   }
@@ -162,6 +225,39 @@ export default function RegisterPage() {
               {fieldErrors.email && (
                 <p className="mt-1 text-sm text-red-600">{fieldErrors.email}</p>
               )}
+            </div>
+            <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleSendCode}
+                  disabled={isLoading || isEmailVerified}
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+                >
+                  {codeSent ? 'Отправить код снова' : 'Отправить код'}
+                </button>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="Код из письма"
+                  value={verificationCode}
+                  onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
+                  disabled={isEmailVerified}
+                  className="w-36 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={handleConfirmCode}
+                  disabled={isLoading || isEmailVerified || !codeSent}
+                  className="rounded-lg bg-primary-dark px-3 py-2 text-sm font-medium text-white hover:bg-primary disabled:opacity-50"
+                >
+                  Подтвердить
+                </button>
+              </div>
+              <p className="text-xs text-slate-600">
+                Для завершения регистрации нужно подтвердить email 6-значным кодом.
+              </p>
             </div>
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-slate-700">

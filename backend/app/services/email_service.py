@@ -28,6 +28,52 @@ class EmailService:
         )
 
     @staticmethod
+    def is_verification_configured() -> bool:
+        return all(
+            [
+                settings.EMAIL_VERIFICATION_ENABLED,
+                settings.SMTP_HOST,
+                settings.SMTP_FROM_EMAIL,
+            ]
+        )
+
+    @staticmethod
+    def send_registration_verification_code(email: str, code: str) -> None:
+        """
+        Отправляет 6-значный код подтверждения для регистрации.
+        """
+        if not EmailService.is_verification_configured():
+            logger.warning("Email verification is not configured")
+            raise RuntimeError("Email verification is not configured")
+
+        msg = EmailMessage()
+        msg["Subject"] = "Код подтверждения регистрации"
+        msg["From"] = f"{settings.SMTP_FROM_NAME} <{settings.SMTP_FROM_EMAIL}>"
+        msg["To"] = email
+        msg.set_content(
+            "\n".join(
+                [
+                    "Здравствуйте!",
+                    "",
+                    f"Ваш код подтверждения: {code}",
+                    f"Код действует {settings.EMAIL_VERIFICATION_CODE_TTL_MINUTES} минут.",
+                    "",
+                    "Если вы не запрашивали регистрацию, просто проигнорируйте это письмо.",
+                ]
+            )
+        )
+        try:
+            with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15) as server:
+                if settings.SMTP_USE_TLS:
+                    server.starttls()
+                if settings.SMTP_USERNAME and settings.SMTP_PASSWORD:
+                    server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
+                server.send_message(msg)
+        except Exception:
+            logger.exception("Failed to send registration verification email")
+            raise
+
+    @staticmethod
     def send_new_order_notification(
         order: Order,
         customer: User,

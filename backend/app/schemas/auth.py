@@ -13,6 +13,19 @@ class UserCreate(BaseModel):
     user_type: UserType = Field(..., description="Тип пользователя: supplier (поставщик), customer (заказчик), admin (администратор)", example="customer")
 
 
+class EmailVerificationRequest(BaseModel):
+    email: EmailStr = Field(..., description="Email для отправки кода")
+
+
+class EmailVerificationConfirm(BaseModel):
+    email: EmailStr = Field(..., description="Email адрес пользователя")
+    code: str = Field(..., description="6-значный код подтверждения", min_length=6, max_length=6)
+
+
+class EmailVerificationResponse(BaseModel):
+    message: str = Field(..., description="Результат операции")
+
+
 class UserResponse(BaseModel):
     id: int = Field(..., description="Уникальный идентификатор пользователя")
     email: str = Field(..., description="Email адрес пользователя")

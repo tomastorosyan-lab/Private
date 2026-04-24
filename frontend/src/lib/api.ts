@@ -273,6 +273,20 @@ class ApiClient {
     });
   }
 
+  async sendRegisterCode(email: string) {
+    return this.request<{ message: string }>(`/auth/register/send-code`, {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  }
+
+  async confirmRegisterCode(email: string, code: string) {
+    return this.request<{ message: string }>(`/auth/register/confirm-code`, {
+      method: 'POST',
+      body: JSON.stringify({ email, code }),
+    });
+  }
+
   async getCurrentUser() {
     return this.request<User>(`/auth/me`);
   }
