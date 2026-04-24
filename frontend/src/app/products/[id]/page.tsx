@@ -6,6 +6,13 @@ import { api, type Product, type InventoryItem, type User } from '@/lib/api';
 import { authService } from '@/lib/auth';
 import Link from 'next/link';
 
+function formatStockForCustomer(quantityRaw: string, itemsPerBox?: number | null): string {
+  const quantity = Math.floor(parseFloat(quantityRaw) || 0);
+  const boxSize = Math.max(1, Number(itemsPerBox) || 1);
+  const threshold = boxSize * 10;
+  return quantity > threshold ? 'много' : String(quantity);
+}
+
 export default function ProductDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -111,7 +118,7 @@ export default function ProductDetailPage() {
                   <div>
                     <div className="font-semibold">{supplier?.full_name || 'Поставщик'}</div>
                     <div className="text-sm text-gray-600">
-                      В наличии: {inv.quantity} {product.unit}
+                      В наличии: {formatStockForCustomer(inv.quantity, product.items_per_box)} {product.unit}
                     </div>
                   </div>
                   <div className="text-right">

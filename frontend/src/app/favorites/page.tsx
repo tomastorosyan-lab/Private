@@ -32,6 +32,13 @@ interface Inventory {
   price: string;
 }
 
+function formatStockForCustomer(quantityRaw: string, itemsPerBox?: number | null): string {
+  const quantity = Math.floor(parseFloat(quantityRaw) || 0);
+  const boxSize = Math.max(1, Number(itemsPerBox) || 1);
+  const threshold = boxSize * 10;
+  return quantity > threshold ? 'много' : String(quantity);
+}
+
 function inventoryRowForProduct(invList: Inventory[], product: Product): Inventory | undefined {
   return invList.find(
     (inv) => Number(inv.product_id) === Number(product.id) && Number(inv.supplier_id) === Number(product.supplier_id),
@@ -269,7 +276,7 @@ export default function FavoritesPage() {
                         <span className="font-bold text-base text-primary-dark">{productInventory.price} ₽</span>
                         <span className="text-gray-300">•</span>
                         <span className="text-gray-600 bg-gray-50 px-2 py-0.5 rounded-md whitespace-nowrap">
-                          В наличии: {Math.floor(parseFloat(productInventory.quantity))} {product.unit}
+                          В наличии: {formatStockForCustomer(productInventory.quantity, product.items_per_box)} {product.unit}
                         </span>
                       </>
                     ) : (

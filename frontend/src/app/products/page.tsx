@@ -44,6 +44,13 @@ function inventoryRowForProduct(invList: Inventory[], product: Product): Invento
   );
 }
 
+function formatStockForCustomer(quantityRaw: string, itemsPerBox?: number | null): string {
+  const quantity = Math.floor(parseFloat(quantityRaw) || 0);
+  const boxSize = Math.max(1, Number(itemsPerBox) || 1);
+  const threshold = boxSize * 10;
+  return quantity > threshold ? 'много' : String(quantity);
+}
+
 export default function ProductsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -844,7 +851,9 @@ export default function ProductsPage() {
                         <>
                           <span className="font-bold text-base text-primary-dark">{productInventory.price} ₽</span>
                           <span className="text-gray-300">•</span>
-                          <span className="text-gray-600 bg-gray-50 px-2 py-0.5 rounded-md whitespace-nowrap">В наличии: {Math.floor(parseFloat(productInventory.quantity))} {product.unit}</span>
+                          <span className="text-gray-600 bg-gray-50 px-2 py-0.5 rounded-md whitespace-nowrap">
+                            В наличии: {formatStockForCustomer(productInventory.quantity, product.items_per_box)} {product.unit}
+                          </span>
                         </>
                       ) : (
                         <span className="text-orange-600 font-semibold bg-orange-50 px-2 py-0.5 rounded-md">Нет в наличии</span>
