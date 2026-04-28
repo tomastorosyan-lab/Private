@@ -9,13 +9,22 @@ from typing import Iterable
 from urllib import error, request
 
 from app.core.config import settings
-from app.models.order import Order
+from app.models.order import Order, OrderStatus
 from app.models.user import User
 
 logger = logging.getLogger(__name__)
 
 
 class TelegramService:
+    STATUS_LABELS = {
+        OrderStatus.PENDING: "ожидает обработки",
+        OrderStatus.CONFIRMED: "подтвержден",
+        OrderStatus.PROCESSING: "в обработке",
+        OrderStatus.SHIPPED: "отправлен",
+        OrderStatus.DELIVERED: "доставлен",
+        OrderStatus.CANCELLED: "отменен",
+    }
+
     @staticmethod
     def is_configured() -> bool:
         return bool(settings.TELEGRAM_BOT_TOKEN)
@@ -85,3 +94,35 @@ class TelegramService:
             ]
         )
         TelegramService.send_message(supplier.telegram_chat_id, text)
+
+    @staticmethod
+    def send_order_status_changed_notification(
+        order: Order,
+        customer: User,
+        supplier: User,
+        old_status: OrderStatus,
+        new_status: OrderStatus,
+    ) -> None:
+        if not TelegramService.is_configured():
+            logger.info("Telegram notifications are disabled: token is not configured")
+            return
+        if not customer.telegram_chat_id or not customer.telegram_notifications_enabled:
+            logger.info("Customer %s has no enabled Telegram notifications", customer.id)
+            return
+
+        site_url = settings.PUBLIC_SITE_URL.rstrip("/")
+        old_label = TelegramService.STATUS_LABELS.get(old_status, str(old_status))
+        new_label = TelegramService.STATUS_LABELS.get(new_status, str(new_status))
+        text = "\n".join(
+            [
+                f"Статус заказа №{order.id} изменен",
+                "",
+                f"Было: {old_label}",
+                f"Стало: {new_label}",
+                f"Поставщик: {supplier.full_name}",
+                f"Сумма: {order.total_amount} ₽",
+                "",
+                f"Открыть заказ: {site_url}/orders/{order.id}",
+            ]
+        )
+        TelegramService.send_message(customer.telegram_chat_id, text)

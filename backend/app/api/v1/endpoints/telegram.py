@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import get_db
-from app.models.user import User, UserType
+from app.models.user import User
 from app.services.telegram_service import TelegramService
 
 router = APIRouter()
@@ -41,26 +41,25 @@ async def telegram_webhook(
         return {"ok": True}
 
     code = parts[1].strip().upper()
-    supplier = (
+    user = (
         db.query(User)
         .filter(
-            User.user_type == UserType.SUPPLIER,
             User.telegram_connect_code == code,
             User.is_active == True,
         )
         .first()
     )
-    if not supplier:
+    if not user:
         TelegramService.send_message(str(chat_id), "Код подключения не найден или уже использован.")
         return {"ok": True}
 
-    supplier.telegram_chat_id = str(chat_id)
-    supplier.telegram_notifications_enabled = True
-    supplier.telegram_connect_code = None
+    user.telegram_chat_id = str(chat_id)
+    user.telegram_notifications_enabled = True
+    user.telegram_connect_code = None
     db.commit()
 
     TelegramService.send_message(
         str(chat_id),
-        f"Telegram-уведомления подключены для поставщика: {supplier.full_name}.",
+        f"Telegram-уведомления подключены для пользователя: {user.full_name}.",
     )
     return {"ok": True}

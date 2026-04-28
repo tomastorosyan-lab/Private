@@ -366,11 +366,6 @@ class AuthService:
                 user.min_order_amount = user_update.min_order_amount
 
         if "telegram_notifications_enabled" in user_update.model_fields_set:
-            if user.user_type != UserType.SUPPLIER:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Telegram-уведомления о заказах доступны только поставщикам",
-                )
             if user_update.telegram_notifications_enabled and not user.telegram_chat_id:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -384,17 +379,12 @@ class AuthService:
         return user
 
     async def create_telegram_connect_code(self, user_id: int) -> str:
-        """Создает одноразовый код для привязки Telegram-чата поставщика."""
+        """Создает одноразовый код для привязки Telegram-чата пользователя."""
         user = self.db.query(User).filter(User.id == user_id).first()
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Пользователь не найден",
-            )
-        if user.user_type != UserType.SUPPLIER:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Telegram-уведомления доступны только поставщикам",
             )
 
         code = secrets.token_urlsafe(6).replace("-", "").replace("_", "")[:8].upper()
@@ -406,17 +396,12 @@ class AuthService:
         return code
 
     async def disconnect_telegram(self, user_id: int) -> User:
-        """Отключает Telegram-уведомления текущего поставщика."""
+        """Отключает Telegram-уведомления текущего пользователя."""
         user = self.db.query(User).filter(User.id == user_id).first()
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Пользователь не найден",
-            )
-        if user.user_type != UserType.SUPPLIER:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Telegram-уведомления доступны только поставщикам",
             )
         user.telegram_chat_id = None
         user.telegram_notifications_enabled = False

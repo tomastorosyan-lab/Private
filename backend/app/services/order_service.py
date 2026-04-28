@@ -273,6 +273,9 @@ class OrderService:
         - Администратор может все
         """
         order = await self.get_order_by_id(order_id, user_id=user_id, current_user=current_user)
+        status_changed = False
+        old_status = None
+        new_status = None
         
         # Проверка прав на обновление статуса
         if order_update.status:
@@ -316,12 +319,28 @@ class OrderService:
                 await self._return_inventory(order)
             
             order.status = new_status
+            status_changed = old_status != new_status
         
         if order_update.notes is not None:
             order.notes = order_update.notes
         
         self.db.commit()
         self.db.refresh(order)
+
+        if status_changed and old_status is not None and new_status is not None:
+            try:
+                customer = self.db.query(User).filter(User.id == order.user_id).first()
+                supplier = self.db.query(User).filter(User.id == order.supplier_id).first()
+                if customer and supplier:
+                    TelegramService.send_order_status_changed_notification(
+                        order=order,
+                        customer=customer,
+                        supplier=supplier,
+                        old_status=old_status,
+                        new_status=new_status,
+                    )
+            except Exception:
+                logger.exception("Failed to process order status Telegram notification for order_id=%s", order.id)
         
         return order
     
