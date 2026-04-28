@@ -714,7 +714,7 @@ export default function NewOrderPage() {
                 onChange={(e) => setDeliveryAddress(e.target.value)}
                 required
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
-                placeholder="г. Москва, ул. Ленина, д. 1"
+                placeholder="Сухум ул Леона д.1"
               />
             </div>
             <div>
@@ -726,7 +726,7 @@ export default function NewOrderPage() {
                 value={contactPhone}
                 onChange={(e) => setContactPhone(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
-                placeholder="+7 (999) 123-45-67"
+                placeholder="+79400000000"
               />
             </div>
             <div>
