@@ -10,10 +10,59 @@ jobs:
     steps:
       - name: Deploy on Hostland via SSH
         uses: appleboy/ssh-action@v1.2.0
+        env:
+          EMAIL_VERIFICATION_ENABLED: ${{ secrets.EMAIL_VERIFICATION_ENABLED }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_USE_TLS: ${{ secrets.SMTP_USE_TLS }}
+          SMTP_USE_SSL: ${{ secrets.SMTP_USE_SSL }}
+          SMTP_FROM_EMAIL: ${{ secrets.SMTP_FROM_EMAIL }}
+          SMTP_FROM_NAME: ${{ secrets.SMTP_FROM_NAME }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT }}
+          envs: EMAIL_VERIFICATION_ENABLED,SMTP_HOST,SMTP_PORT,SMTP_USERNAME,SMTP_PASSWORD,SMTP_USE_TLS,SMTP_USE_SSL,SMTP_FROM_EMAIL,SMTP_FROM_NAME
           script: |
+            cd /opt/dis
+            python3 - <<'PY'
+            import os
+            from pathlib import Path
+
+            env_path = Path("/opt/dis/.env")
+            updates = {
+                "EMAIL_VERIFICATION_ENABLED": os.environ["EMAIL_VERIFICATION_ENABLED"],
+                "SMTP_HOST": os.environ["SMTP_HOST"],
+                "SMTP_PORT": os.environ["SMTP_PORT"],
+                "SMTP_USERNAME": os.environ["SMTP_USERNAME"],
+                "SMTP_PASSWORD": os.environ["SMTP_PASSWORD"],
+                "SMTP_USE_TLS": os.environ["SMTP_USE_TLS"],
+                "SMTP_USE_SSL": os.environ["SMTP_USE_SSL"],
+                "SMTP_FROM_EMAIL": os.environ["SMTP_FROM_EMAIL"],
+                "SMTP_FROM_NAME": os.environ["SMTP_FROM_NAME"],
+            }
+
+            lines = env_path.read_text().splitlines() if env_path.exists() else []
+            seen = set()
+            next_lines = []
+            for line in lines:
+                if "=" not in line or line.lstrip().startswith("#"):
+                    next_lines.append(line)
+                    continue
+                key = line.split("=", 1)[0]
+                if key in updates:
+                    next_lines.append(f"{key}={updates[key]}")
+                    seen.add(key)
+                else:
+                    next_lines.append(line)
+
+            for key, value in updates.items():
+                if key not in seen:
+                    next_lines.append(f"{key}={value}")
+
+            env_path.write_text("\n".join(next_lines) + "\n")
+            PY
             /opt/dis/scripts/deploy-prod.sh main
