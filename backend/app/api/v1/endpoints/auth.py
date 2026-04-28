@@ -20,6 +20,9 @@ from app.schemas.auth import (
     EmailVerificationRequest,
     EmailVerificationConfirm,
     EmailVerificationResponse,
+    PasswordResetRequest,
+    PasswordResetConfirm,
+    PasswordResetResponse,
 )
 from app.services.auth_service import AuthService
 from app.models.user import User
@@ -121,6 +124,56 @@ async def register(request: Request, user_data: UserCreate, db: Session = Depend
     )
     service = AuthService(db)
     return await service.register_user(user_data)
+
+
+@router.post(
+    "/password-reset/send-code",
+    response_model=PasswordResetResponse,
+    summary="Отправка кода сброса пароля",
+    tags=["Аутентификация"],
+)
+async def send_password_reset_code(
+    request: Request,
+    payload: PasswordResetRequest,
+    db: Session = Depends(get_db),
+):
+    client_ip = get_client_ip(request)
+    normalized_email = payload.email.strip().lower()
+    auth_rate_limiter.check(
+        f"password-reset:ip:{client_ip}",
+        limit=settings.PASSWORD_RESET_IP_LIMIT_PER_HOUR,
+        window_seconds=3600,
+        detail="Слишком много запросов сброса пароля с этого IP",
+    )
+    auth_rate_limiter.check(
+        f"password-reset:email:{normalized_email}",
+        limit=settings.PASSWORD_RESET_EMAIL_LIMIT_PER_HOUR,
+        window_seconds=3600,
+        detail="Слишком много запросов сброса пароля для этого email",
+    )
+    service = AuthService(db)
+    await service.send_password_reset_code(payload.email)
+    return {"message": "Если пользователь с таким email существует, код сброса отправлен на почту"}
+
+
+@router.post(
+    "/password-reset/confirm",
+    response_model=PasswordResetResponse,
+    summary="Сброс пароля по email-коду",
+    tags=["Аутентификация"],
+)
+async def reset_password(
+    payload: PasswordResetConfirm,
+    db: Session = Depends(get_db),
+):
+    service = AuthService(db)
+    await service.reset_password_with_code(
+        email=payload.email,
+        code=payload.code,
+        password=payload.password,
+        password_confirm=payload.password_confirm,
+    )
+    return {"message": "Пароль успешно изменен"}
 
 
 @router.post(

@@ -30,6 +30,21 @@ class EmailVerificationResponse(BaseModel):
     )
 
 
+class PasswordResetRequest(BaseModel):
+    email: EmailStr = Field(..., description="Email для отправки кода сброса пароля")
+
+
+class PasswordResetConfirm(BaseModel):
+    email: EmailStr = Field(..., description="Email адрес пользователя")
+    code: str = Field(..., description="6-значный код сброса пароля", min_length=6, max_length=6)
+    password: str = Field(..., description="Новый пароль (минимум 8 символов)", min_length=8)
+    password_confirm: str = Field(..., description="Повтор нового пароля", min_length=8)
+
+
+class PasswordResetResponse(BaseModel):
+    message: str = Field(..., description="Результат операции")
+
+
 class UserResponse(BaseModel):
     id: int = Field(..., description="Уникальный идентификатор пользователя")
     email: str = Field(..., description="Email адрес пользователя")

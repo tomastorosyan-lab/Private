@@ -15,6 +15,7 @@ from app.models.product import Product
 from app.models.inventory import Inventory
 from app.models.email_verification import EmailVerification
 from app.models.email_verification_event import EmailVerificationEvent
+from app.models.password_reset_code import PasswordResetCode
 from app.services.email_service import EmailService, EmailDeliveryError
 from app.core.config import settings
 
@@ -122,6 +123,110 @@ class AuthService:
         )
         if event:
             event.validated_at = now
+        self.db.commit()
+
+    async def send_password_reset_code(self, email: str) -> None:
+        normalized_email = self._normalize_email(email)
+        user = self.db.query(User.id).filter(User.email == normalized_email).first()
+        if not user:
+            # Не раскрываем, зарегистрирован ли email.
+            return
+        if not EmailService.is_verification_configured():
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Email не настроен: заполните SMTP_HOST и SMTP_FROM_EMAIL на сервере.",
+            )
+
+        code = f"{secrets.randbelow(1000000):06d}"
+        now = datetime.now(timezone.utc)
+        expires_at = now + timedelta(minutes=settings.PASSWORD_RESET_CODE_TTL_MINUTES)
+        cooldown_seconds = max(0, int(settings.PASSWORD_RESET_RESEND_COOLDOWN_SECONDS))
+
+        row = self.db.query(PasswordResetCode).filter(PasswordResetCode.email == normalized_email).first()
+        if row:
+            last_sent_at = row.updated_at or row.created_at
+            if last_sent_at is not None and cooldown_seconds > 0:
+                seconds_from_last_send = (now - last_sent_at).total_seconds()
+                if seconds_from_last_send < cooldown_seconds:
+                    retry_after = int(cooldown_seconds - seconds_from_last_send + 0.999)
+                    raise HTTPException(
+                        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                        detail=f"Код уже отправлялся недавно. Повторите через {retry_after} сек.",
+                    )
+            row.code_hash = get_password_hash(code)
+            row.attempts = 0
+            row.expires_at = expires_at
+        else:
+            row = PasswordResetCode(
+                email=normalized_email,
+                code_hash=get_password_hash(code),
+                attempts=0,
+                expires_at=expires_at,
+            )
+            self.db.add(row)
+        self.db.commit()
+
+        try:
+            EmailService.send_password_reset_code(normalized_email, code)
+        except EmailDeliveryError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=str(exc),
+            )
+        row.updated_at = datetime.now(timezone.utc)
+        self.db.commit()
+
+    async def reset_password_with_code(
+        self,
+        email: str,
+        code: str,
+        password: str,
+        password_confirm: str,
+    ) -> None:
+        if password != password_confirm:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Пароли не совпадают",
+            )
+
+        normalized_email = self._normalize_email(email)
+        row = self.db.query(PasswordResetCode).filter(PasswordResetCode.email == normalized_email).first()
+        if not row:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Сначала запросите код сброса пароля",
+            )
+
+        now = datetime.now(timezone.utc)
+        if row.expires_at < now:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Код сброса пароля истек. Запросите новый код",
+            )
+        if row.attempts >= 5:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Превышено число попыток ввода кода. Запросите новый код",
+            )
+        if not verify_password(code, row.code_hash):
+            row.attempts += 1
+            self.db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Неверный код сброса пароля",
+            )
+
+        user = self.db.query(User).filter(User.email == normalized_email).first()
+        if not user:
+            self.db.delete(row)
+            self.db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Не удалось сбросить пароль",
+            )
+
+        user.hashed_password = get_password_hash(password)
+        self.db.delete(row)
         self.db.commit()
 
     async def register_user(self, user_data: UserCreate) -> User:

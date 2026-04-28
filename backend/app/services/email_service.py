@@ -102,6 +102,35 @@ class EmailService:
         EmailService._send_message(msg)
 
     @staticmethod
+    def send_password_reset_code(email: str, code: str) -> None:
+        """
+        Отправляет 6-значный код для сброса пароля.
+        """
+        if not EmailService.is_verification_configured():
+            logger.warning("Password reset email is not configured")
+            raise EmailDeliveryError(
+                "Email не настроен: заполните SMTP_HOST и SMTP_FROM_EMAIL на сервере."
+            )
+
+        msg = EmailMessage()
+        msg["Subject"] = "Код сброса пароля"
+        msg["From"] = f"{settings.SMTP_FROM_NAME} <{settings.SMTP_FROM_EMAIL}>"
+        msg["To"] = email
+        msg.set_content(
+            "\n".join(
+                [
+                    "Здравствуйте!",
+                    "",
+                    f"Ваш код сброса пароля: {code}",
+                    f"Код действует {settings.PASSWORD_RESET_CODE_TTL_MINUTES} минут.",
+                    "",
+                    "Если вы не запрашивали сброс пароля, просто проигнорируйте это письмо.",
+                ]
+            )
+        )
+        EmailService._send_message(msg)
+
+    @staticmethod
     def send_new_order_notification(
         order: Order,
         customer: User,

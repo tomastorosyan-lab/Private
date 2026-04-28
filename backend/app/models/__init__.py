@@ -8,6 +8,7 @@ from app.models.order import Order, OrderItem
 from app.models.inventory import Inventory
 from app.models.email_verification import EmailVerification
 from app.models.email_verification_event import EmailVerificationEvent
+from app.models.password_reset_code import PasswordResetCode
 
 __all__ = [
     "User",
@@ -18,5 +19,6 @@ __all__ = [
     "Inventory",
     "EmailVerification",
     "EmailVerificationEvent",
+    "PasswordResetCode",
 ]
 

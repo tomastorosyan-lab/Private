@@ -287,6 +287,25 @@ class ApiClient {
     });
   }
 
+  async sendPasswordResetCode(email: string) {
+    return this.request<{ message: string }>(`/auth/password-reset/send-code`, {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  }
+
+  async resetPassword(email: string, code: string, password: string, passwordConfirm: string) {
+    return this.request<{ message: string }>(`/auth/password-reset/confirm`, {
+      method: 'POST',
+      body: JSON.stringify({
+        email,
+        code,
+        password,
+        password_confirm: passwordConfirm,
+      }),
+    });
+  }
+
   async getCurrentUser() {
     return this.request<User>(`/auth/me`);
   }
