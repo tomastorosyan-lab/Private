@@ -14,6 +14,7 @@ from app.models.order import Order, OrderItem
 from app.models.product import Product
 from app.models.inventory import Inventory
 from app.models.email_verification import EmailVerification
+from app.models.email_verification_event import EmailVerificationEvent
 from app.services.email_service import EmailService, EmailDeliveryError
 from app.core.config import settings
 
@@ -66,6 +67,11 @@ class AuthService:
                 verified_until=None,
             )
             self.db.add(row)
+        event = EmailVerificationEvent(
+            email=normalized_email,
+            requested_at=now,
+        )
+        self.db.add(event)
         self.db.commit()
 
         try:
@@ -75,6 +81,8 @@ class AuthService:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=str(exc),
             )
+        event.sent_at = datetime.now(timezone.utc)
+        self.db.commit()
         return True
 
     async def confirm_registration_code(self, email: str, code: str) -> None:
@@ -106,6 +114,14 @@ class AuthService:
 
         row.verified_until = now + timedelta(minutes=settings.EMAIL_VERIFICATION_WINDOW_MINUTES)
         row.attempts = 0
+        event = (
+            self.db.query(EmailVerificationEvent)
+            .filter(EmailVerificationEvent.email == normalized_email)
+            .order_by(EmailVerificationEvent.requested_at.desc(), EmailVerificationEvent.id.desc())
+            .first()
+        )
+        if event:
+            event.validated_at = now
         self.db.commit()
 
     async def register_user(self, user_data: UserCreate) -> User:
