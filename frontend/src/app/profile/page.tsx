@@ -46,6 +46,16 @@ const validatePassword = (password: string): string | null => {
   return null;
 };
 
+const getTelegramStartLink = (botUsername: string | null, code: string) => {
+  if (!botUsername || !code) return '';
+  return `https://t.me/${botUsername}?start=${encodeURIComponent(code)}`;
+};
+
+const getTelegramQrUrl = (telegramLink: string) => {
+  if (!telegramLink) return '';
+  return `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(telegramLink)}`;
+};
+
 export default function ProfilePage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
@@ -742,6 +752,33 @@ export default function ProfilePage() {
 
               {telegramConnectCode && (
                 <div className="mt-4 rounded-md bg-white p-3 text-sm text-slate-700 ring-1 ring-slate-200">
+                  {(() => {
+                    const telegramLink = getTelegramStartLink(telegramBotUsername, telegramConnectCode);
+                    const qrUrl = getTelegramQrUrl(telegramLink);
+                    return qrUrl ? (
+                      <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center">
+                        <img
+                          src={qrUrl}
+                          alt="QR-код для подключения Telegram"
+                          className="h-[180px] w-[180px] rounded-lg border border-slate-200 bg-white p-2"
+                        />
+                        <div>
+                          <p className="font-medium text-slate-900">Быстрое подключение</p>
+                          <p className="mt-1 text-sm text-slate-600">
+                            Отсканируйте QR-код телефоном, откройте Telegram и нажмите Start.
+                          </p>
+                          <a
+                            href={telegramLink}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="mt-2 inline-flex rounded-md bg-primary px-3 py-2 text-sm font-medium text-white hover:bg-primary-dark"
+                          >
+                            Открыть Telegram
+                          </a>
+                        </div>
+                      </div>
+                    ) : null;
+                  })()}
                   <p className="font-medium text-slate-900">Код подключения: {telegramConnectCode}</p>
                   <p className="mt-1">
                     Откройте {telegramBotUsername ? `@${telegramBotUsername}` : 'Telegram-бота магазина'} и отправьте:
