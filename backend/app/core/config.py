@@ -37,8 +37,13 @@ class Settings(BaseSettings):
     
     # Настройки загрузки файлов
     UPLOAD_DIR: str = "uploads"
-    MAX_UPLOAD_SIZE: int = 5 * 1024 * 1024  # 5MB
+    # Максимальный размер исходного файла до обработки (байты)
+    MAX_UPLOAD_SIZE: int = 12 * 1024 * 1024  # 12MB
     ALLOWED_IMAGE_TYPES: List[str] = ["image/jpeg", "image/png", "image/gif", "image/webp"]
+    # После обработки: единый формат WebP, размер файла не больше этого значения
+    IMAGE_OUTPUT_MAX_BYTES: int = 1024 * 1024  # 1MB
+    # Максимальная сторона после вписывания (px); при необходимости уменьшается, пока не уложимся в лимит
+    IMAGE_OUTPUT_MAX_SIDE: int = 1600
 
     # Email-уведомления о новых заказах
     EMAIL_NOTIFICATIONS_ENABLED: bool = False
@@ -56,6 +61,10 @@ class Settings(BaseSettings):
     EMAIL_VERIFICATION_CODE_TTL_MINUTES: int = 10
     EMAIL_VERIFICATION_WINDOW_MINUTES: int = 30
     EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS: int = 60
+    AUTH_SEND_CODE_IP_LIMIT_PER_HOUR: int = 20
+    AUTH_SEND_CODE_EMAIL_LIMIT_PER_HOUR: int = 5
+    AUTH_REGISTER_IP_LIMIT_PER_HOUR: int = 10
+    AUTH_REGISTER_EMAIL_LIMIT_PER_HOUR: int = 3
     
     class Config:
         env_file = ".env"

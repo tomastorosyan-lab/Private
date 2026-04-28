@@ -297,8 +297,9 @@ export default function ProfilePage() {
     if (!file) return;
 
     // Валидация размера файла
-    if (file.size > 5 * 1024 * 1024) {
-      setError('Файл слишком большой. Максимальный размер: 5MB');
+    const maxUploadBytes = 12 * 1024 * 1024;
+    if (file.size > maxUploadBytes) {
+      setError('Файл слишком большой. Максимальный размер: 12MB');
       return;
     }
 
@@ -465,7 +466,7 @@ export default function ProfilePage() {
                 {isUploadingLogo ? 'Загрузка...' : logoPreview ? 'Изменить логотип' : 'Загрузить логотип'}
               </label>
               <p className="mt-2 text-xs text-gray-500">
-                JPEG, PNG, GIF, WebP. Макс. 5MB
+                JPEG, PNG, GIF, WebP. Макс. 12MB (на сервере — WebP до 1MB)
               </p>
             </div>
           </div>

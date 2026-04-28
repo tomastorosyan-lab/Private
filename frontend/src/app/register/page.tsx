@@ -227,34 +227,36 @@ export default function RegisterPage() {
                 <p className="mt-1 text-sm text-red-600">{fieldErrors.email}</p>
               )}
             </div>
-            <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
-              <div className="flex gap-2">
+            <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <div className="grid gap-2">
                 <button
                   type="button"
                   onClick={handleSendCode}
                   disabled={isLoading || isEmailVerified}
-                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-center text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-50"
                 >
                   {codeSent ? 'Отправить код снова' : 'Отправить код'}
                 </button>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={6}
-                  placeholder="Код из письма"
-                  value={verificationCode}
-                  onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
-                  disabled={isEmailVerified}
-                  className="w-36 rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                />
-                <button
-                  type="button"
-                  onClick={handleConfirmCode}
-                  disabled={isLoading || isEmailVerified || !codeSent}
-                  className="rounded-lg bg-primary-dark px-3 py-2 text-sm font-medium text-white hover:bg-primary disabled:opacity-50"
-                >
-                  Подтвердить
-                </button>
+                <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    placeholder="Код из письма"
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
+                    disabled={isEmailVerified}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleConfirmCode}
+                    disabled={isLoading || isEmailVerified || !codeSent}
+                    className="whitespace-nowrap rounded-lg bg-primary-dark px-3 py-2 text-sm font-medium text-white hover:bg-primary disabled:opacity-50"
+                  >
+                    Подтвердить
+                  </button>
+                </div>
               </div>
               <p className="text-xs text-slate-600">
                 Для завершения регистрации нужно подтвердить email 6-значным кодом.

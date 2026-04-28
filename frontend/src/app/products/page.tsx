@@ -157,11 +157,16 @@ export default function ProductsPage() {
       .filter((group): group is NonNullable<typeof group> => group !== null);
   }, [categoryFilterQuery, visibleCategoryTree]);
 
+  const suppliersWithVisibleProducts = useMemo(() => {
+    const visibleSupplierIds = new Set(products.map((product) => Number(product.supplier_id)));
+    return suppliers.filter((supplier) => visibleSupplierIds.has(Number(supplier.id)));
+  }, [products, suppliers]);
+
   const filteredSuppliers = useMemo(() => {
     const query = supplierFilterQuery.trim().toLowerCase();
-    if (!query) return suppliers;
-    return suppliers.filter((supplier) => supplier.full_name.toLowerCase().includes(query));
-  }, [supplierFilterQuery, suppliers]);
+    if (!query) return suppliersWithVisibleProducts;
+    return suppliersWithVisibleProducts.filter((supplier) => supplier.full_name.toLowerCase().includes(query));
+  }, [supplierFilterQuery, suppliersWithVisibleProducts]);
 
   const selectedCategoryScope = useMemo(() => {
     if (!selectedCategory) return null;
@@ -277,6 +282,20 @@ export default function ProductsPage() {
     document.addEventListener('mousedown', onPointerDown);
     return () => document.removeEventListener('mousedown', onPointerDown);
   }, [isSupplierDropdownOpen]);
+
+  useEffect(() => {
+    if (isLoading || selectedSupplierId === null) return;
+    const hasVisibleProducts = suppliersWithVisibleProducts.some(
+      (supplier) => Number(supplier.id) === Number(selectedSupplierId)
+    );
+    if (hasVisibleProducts) return;
+
+    setSelectedSupplierId(null);
+    setSupplierFilterQuery('');
+    if (searchParams.get('supplier_id') === String(selectedSupplierId)) {
+      router.replace('/products');
+    }
+  }, [isLoading, router, searchParams, selectedSupplierId, suppliersWithVisibleProducts]);
 
   useEffect(() => {
     const onVisible = () => {
@@ -494,7 +513,7 @@ export default function ProductsPage() {
 
   // Фильтруем товары
   const selectedSupplier = selectedSupplierId !== null
-    ? suppliers.find((supplier) => supplier.id === selectedSupplierId) || null
+    ? suppliersWithVisibleProducts.find((supplier) => supplier.id === selectedSupplierId) || null
     : null;
 
   const filteredProducts = products.filter((product) => {

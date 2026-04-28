@@ -1,7 +1,7 @@
 """
 Эндпоинты аутентификации
 """
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Request, status, UploadFile, File
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import timedelta
@@ -10,6 +10,7 @@ from app.core.security import create_access_token
 from app.core.config import settings
 from app.core.dependencies import get_current_user as get_current_user_dep
 from app.core.permissions import require_admin
+from app.core.rate_limit import auth_rate_limiter, get_client_ip
 from app.core.upload import save_uploaded_file, delete_file
 from app.schemas.auth import (
     Token,
@@ -33,9 +34,24 @@ router = APIRouter()
     tags=["Аутентификация"],
 )
 async def send_register_code(
+    request: Request,
     payload: EmailVerificationRequest,
     db: Session = Depends(get_db),
 ):
+    client_ip = get_client_ip(request)
+    normalized_email = payload.email.strip().lower()
+    auth_rate_limiter.check(
+        f"register-code:ip:{client_ip}",
+        limit=settings.AUTH_SEND_CODE_IP_LIMIT_PER_HOUR,
+        window_seconds=3600,
+        detail="Слишком много запросов кода с этого IP",
+    )
+    auth_rate_limiter.check(
+        f"register-code:email:{normalized_email}",
+        limit=settings.AUTH_SEND_CODE_EMAIL_LIMIT_PER_HOUR,
+        window_seconds=3600,
+        detail="Слишком много запросов кода для этого email",
+    )
     service = AuthService(db)
     verification_required = await service.send_registration_code(payload.email)
     if verification_required:
@@ -82,13 +98,27 @@ async def confirm_register_code(
     response_description="Данные созданного пользователя",
     tags=["Аутентификация"]
 )
-async def register(user_data: UserCreate, db: Session = Depends(get_db)):
+async def register(request: Request, user_data: UserCreate, db: Session = Depends(get_db)):
     """
     Регистрация нового пользователя
     
     Создает нового пользователя в системе с указанным типом (поставщик или заказчик).
     Email должен быть уникальным.
     """
+    client_ip = get_client_ip(request)
+    normalized_email = user_data.email.strip().lower()
+    auth_rate_limiter.check(
+        f"register:ip:{client_ip}",
+        limit=settings.AUTH_REGISTER_IP_LIMIT_PER_HOUR,
+        window_seconds=3600,
+        detail="Слишком много попыток регистрации с этого IP",
+    )
+    auth_rate_limiter.check(
+        f"register:email:{normalized_email}",
+        limit=settings.AUTH_REGISTER_EMAIL_LIMIT_PER_HOUR,
+        window_seconds=3600,
+        detail="Слишком много попыток регистрации для этого email",
+    )
     service = AuthService(db)
     return await service.register_user(user_data)
 
@@ -205,7 +235,7 @@ async def update_current_user(
     Загружает логотип для текущего пользователя.
     
     Поддерживаемые форматы: JPEG, PNG, GIF, WebP
-    Максимальный размер: 5MB
+    Максимальный размер исходного файла: 12MB; после обработки — WebP до 1MB
     
     Старый логотип автоматически удаляется при загрузке нового.
     """,
