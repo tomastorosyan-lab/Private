@@ -246,11 +246,6 @@ export default function ProductsPage() {
   }, [favoriteProductIds]);
 
   useEffect(() => {
-    if (!authService.isAuthenticated()) {
-      router.push('/login');
-      return;
-    }
-
     // Получаем supplier_id из URL параметров
     const supplierIdParam = searchParams.get('supplier_id');
     if (supplierIdParam) {
@@ -260,11 +255,10 @@ export default function ProductsPage() {
     }
 
     loadData();
-  }, [router, searchParams, loadData]);
+  }, [searchParams, loadData]);
 
   useEffect(() => {
     const onCatalogRefresh = () => {
-      if (!authService.isAuthenticated()) return;
       loadData();
     };
     window.addEventListener('products-catalog-refresh', onCatalogRefresh);
@@ -300,7 +294,6 @@ export default function ProductsPage() {
   useEffect(() => {
     const onVisible = () => {
       if (document.visibilityState !== 'visible') return;
-      if (!authService.isAuthenticated()) return;
       loadData();
     };
     document.addEventListener('visibilitychange', onVisible);

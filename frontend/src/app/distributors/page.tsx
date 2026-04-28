@@ -3,24 +3,16 @@
 import { useEffect, useState } from 'react';
 import { api, type User } from '@/lib/api';
 import { getPublicApiBase } from '@/lib/publicBase';
-import { authService } from '@/lib/auth';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 export default function DistributorsPage() {
-  const router = useRouter();
   const [suppliers, setSuppliers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!authService.isAuthenticated()) {
-      router.push('/login');
-      return;
-    }
-
     loadDistributors();
-  }, [router]);
+  }, []);
 
   const loadDistributors = async () => {
     try {

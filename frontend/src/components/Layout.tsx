@@ -335,45 +335,45 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                       </span>
                     )}
                   </Link>
-                  {user.user_type === 'customer' && (
-                    <Link
-                      href="/favorites"
-                      className={`relative rounded-lg px-2 py-2 text-xs font-medium transition-colors sm:px-3 ${
-                        isActive('/favorites')
-                          ? 'bg-primary-light text-primary-dark'
-                          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                      }`}
-                    >
-                      Избранное
-                      {favoritesCount > 0 && (
-                        <span className="ml-1 inline-flex min-w-[1rem] items-center justify-center rounded-full bg-rose-100 px-1 text-[10px] font-semibold text-rose-900">
-                          {favoritesCount}
-                        </span>
-                      )}
-                    </Link>
-                  )}
-                  {user.user_type === 'customer' && (
-                    <Link
-                      href="/orders/new"
-                      className={`relative inline-flex items-center rounded-lg px-2 py-2 text-xs font-medium transition-colors sm:px-3 ${
-                        pathname === '/orders/new'
-                          ? 'bg-primary-light text-primary-dark'
-                          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                      }`}
-                    >
-                      <span className="mr-1 sm:mr-2">🛒</span>
-                      <span className="hidden md:inline">Корзина</span>
-                      {cartCount > 0 && (
-                        <span className="ml-2 hidden lg:inline text-xs font-semibold text-slate-600">
-                          на {formatCartTotal(cartTotal)}
-                        </span>
-                      )}
-                      {cartCount > 0 && (
-                        <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary-light px-1.5 py-0.5 text-xs font-semibold leading-none text-primary-dark sm:ml-2 sm:px-2 sm:py-1">
-                          {cartCount}
-                        </span>
-                      )}
-                    </Link>
+                  {user.user_type !== 'supplier' && (
+                    <>
+                      <Link
+                        href="/favorites"
+                        className={`relative rounded-lg px-2 py-2 text-xs font-medium transition-colors sm:px-3 ${
+                          isActive('/favorites')
+                            ? 'bg-primary-light text-primary-dark'
+                            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                        }`}
+                      >
+                        Избранное
+                        {favoritesCount > 0 && (
+                          <span className="ml-1 inline-flex min-w-[1rem] items-center justify-center rounded-full bg-rose-100 px-1 text-[10px] font-semibold text-rose-900">
+                            {favoritesCount}
+                          </span>
+                        )}
+                      </Link>
+                      <Link
+                        href="/orders/new"
+                        className={`relative inline-flex items-center rounded-lg px-2 py-2 text-xs font-medium transition-colors sm:px-3 ${
+                          pathname === '/orders/new'
+                            ? 'bg-primary-light text-primary-dark'
+                            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                        }`}
+                      >
+                        <span className="mr-1 sm:mr-2">🛒</span>
+                        <span className="hidden md:inline">Корзина</span>
+                        {cartCount > 0 && (
+                          <span className="ml-2 hidden lg:inline text-xs font-semibold text-slate-600">
+                            на {formatCartTotal(cartTotal)}
+                          </span>
+                        )}
+                        {cartCount > 0 && (
+                          <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary-light px-1.5 py-0.5 text-xs font-semibold leading-none text-primary-dark sm:ml-2 sm:px-2 sm:py-1">
+                            {cartCount}
+                          </span>
+                        )}
+                      </Link>
+                    </>
                   )}
                   <div className="relative" ref={profileMenuRef}>
                     <button
@@ -413,6 +413,42 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 </div>
               ) : (
                 <div className="flex items-center space-x-2 sm:space-x-4">
+                  <Link
+                    href="/favorites"
+                    className={`relative rounded-lg px-2 py-2 text-xs font-medium transition-colors sm:px-3 ${
+                      isActive('/favorites')
+                        ? 'bg-primary-light text-primary-dark'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    Избранное
+                    {favoritesCount > 0 && (
+                      <span className="ml-1 inline-flex min-w-[1rem] items-center justify-center rounded-full bg-rose-100 px-1 text-[10px] font-semibold text-rose-900">
+                        {favoritesCount}
+                      </span>
+                    )}
+                  </Link>
+                  <Link
+                    href="/orders/new"
+                    className={`relative inline-flex items-center rounded-lg px-2 py-2 text-xs font-medium transition-colors sm:px-3 ${
+                      pathname === '/orders/new'
+                        ? 'bg-primary-light text-primary-dark'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <span className="mr-1 sm:mr-2">🛒</span>
+                    <span className="hidden md:inline">Корзина</span>
+                    {cartCount > 0 && (
+                      <span className="ml-2 hidden lg:inline text-xs font-semibold text-slate-600">
+                        на {formatCartTotal(cartTotal)}
+                      </span>
+                    )}
+                    {cartCount > 0 && (
+                      <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary-light px-1.5 py-0.5 text-xs font-semibold leading-none text-primary-dark sm:ml-2 sm:px-2 sm:py-1">
+                        {cartCount}
+                      </span>
+                    )}
+                  </Link>
                   {pathname === '/register' ? (
                     <Link
                       href="/login"
@@ -439,19 +475,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <div className="px-2 pt-2 pb-3 space-y-1">
                 {user ? (
                   <>
-                    {(user.user_type === 'customer' || user.user_type === 'admin' || user.user_type === 'supplier') && (
-                      <Link
-                        href="/products"
-                        className={`block rounded-lg px-3 py-2 text-base font-medium transition-colors ${
-                          isActive('/products')
-                            ? 'bg-primary-light text-primary-dark'
-                            : 'text-slate-800 hover:bg-slate-50 hover:text-primary'
-                        }`}
-                        onClick={() => setMobileMenuOpen(false)}
-                      >
-                        Каталог
-                      </Link>
-                    )}
+                    <Link
+                      href="/products"
+                      className={`block rounded-lg px-3 py-2 text-base font-medium transition-colors ${
+                        isActive('/products')
+                          ? 'bg-primary-light text-primary-dark'
+                          : 'text-slate-800 hover:bg-slate-50 hover:text-primary'
+                      }`}
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Каталог
+                    </Link>
                     {user.user_type === 'supplier' && (
                       <Link
                         href="/products/manage"
@@ -483,7 +517,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                         </span>
                       )}
                     </Link>
-                    {user.user_type === 'customer' && (
+                    {user.user_type !== 'supplier' && (
                       <>
                         <Link
                           href="/favorites"
@@ -544,6 +578,40 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   </>
                 ) : (
                   <>
+                    <Link
+                      href="/products"
+                      className={`block rounded-lg px-3 py-2 text-base font-medium transition-colors ${
+                        isActive('/products')
+                          ? 'bg-primary-light text-primary-dark'
+                          : 'text-slate-800 hover:bg-slate-50 hover:text-primary'
+                      }`}
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Каталог
+                    </Link>
+                    <Link
+                      href="/favorites"
+                      className={`block rounded-lg px-3 py-2 text-base font-medium transition-colors ${
+                        isActive('/favorites')
+                          ? 'bg-primary-light text-primary-dark'
+                          : 'text-slate-800 hover:bg-slate-50 hover:text-primary'
+                      }`}
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      ⚑ Избранное {favoritesCount > 0 && `(${favoritesCount})`}
+                    </Link>
+                    <Link
+                      href="/orders/new"
+                      className={`block rounded-lg px-3 py-2 text-base font-medium transition-colors ${
+                        pathname === '/orders/new'
+                          ? 'bg-primary-light text-primary-dark'
+                          : 'text-slate-800 hover:bg-slate-50 hover:text-primary'
+                      }`}
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      🛒 Корзина {cartCount > 0 && `(${cartCount})`}
+                      {cartCount > 0 && ` на ${formatCartTotal(cartTotal)}`}
+                    </Link>
                     <Link
                       href="/login"
                       className="block rounded-lg px-3 py-2 text-base font-medium text-slate-800 hover:bg-slate-50 hover:text-primary"

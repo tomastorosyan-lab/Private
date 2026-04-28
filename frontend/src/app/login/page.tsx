@@ -19,7 +19,10 @@ export default function LoginPage() {
 
     try {
       await authService.login(email, password);
-      router.push('/products');
+      const next = typeof window !== 'undefined'
+        ? new URLSearchParams(window.location.search).get('next')
+        : null;
+      router.push(next && next.startsWith('/') ? next : '/products');
     } catch (err: any) {
       setError(err.message || 'Ошибка входа. Проверьте email и пароль.');
     } finally {

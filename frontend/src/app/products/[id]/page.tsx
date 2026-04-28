@@ -1,9 +1,8 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { api, type Product, type InventoryItem, type User } from '@/lib/api';
-import { authService } from '@/lib/auth';
 import Link from 'next/link';
 
 function formatStockForCustomer(quantityRaw: string, itemsPerBox?: number | null): string {
@@ -15,7 +14,6 @@ function formatStockForCustomer(quantityRaw: string, itemsPerBox?: number | null
 
 export default function ProductDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const productId = Number(params.id);
   const [product, setProduct] = useState<Product | null>(null);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
@@ -45,13 +43,8 @@ export default function ProductDetailPage() {
   }, [productId]);
 
   useEffect(() => {
-    if (!authService.isAuthenticated()) {
-      router.push('/login');
-      return;
-    }
-
     loadProductData();
-  }, [router, loadProductData]);
+  }, [loadProductData]);
 
   useEffect(() => {
     const onRefresh = () => {

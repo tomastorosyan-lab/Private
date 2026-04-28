@@ -56,10 +56,6 @@ export default function FavoritesPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!authService.isAuthenticated()) {
-      router.push('/login');
-      return;
-    }
     const user = authService.getUser();
     if (user?.user_type === 'supplier') {
       router.push('/products/manage');

@@ -60,11 +60,6 @@ export default function NewOrderPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!authService.isAuthenticated()) {
-      router.push('/login');
-      return;
-    }
-
     const user = authService.getUser();
     // Поставщики не могут создавать заказы
     if (user && user.user_type === 'supplier') {
@@ -87,7 +82,9 @@ export default function NewOrderPage() {
       }
     };
 
-    loadUserData();
+    if (user) {
+      loadUserData();
+    }
     loadSuppliers();
     loadAllProductsAndInventory();
     
@@ -329,6 +326,11 @@ export default function NewOrderPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (!authService.isAuthenticated()) {
+      router.push('/login?next=/orders/new');
+      return;
+    }
 
     if (cart.length === 0) {
       setError('Добавьте товары в заказ');
