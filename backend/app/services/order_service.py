@@ -13,6 +13,7 @@ from app.schemas.order import OrderCreate, OrderUpdate
 from app.core.exceptions import NotFoundException, BusinessLogicException, ForbiddenException
 from app.core.permissions import can_modify_order, can_view_order
 from app.services.email_service import EmailService
+from app.services.telegram_service import TelegramService
 
 
 logger = logging.getLogger(__name__)
@@ -177,8 +178,14 @@ class OrderService:
                     supplier=supplier,
                     item_lines=item_lines,
                 )
+                TelegramService.send_new_order_notification(
+                    order=order,
+                    customer=customer,
+                    supplier=supplier,
+                    item_lines=item_lines,
+                )
         except Exception:
-            logger.exception("Failed to process new order email notification for order_id=%s", order.id)
+            logger.exception("Failed to process new order notification for order_id=%s", order.id)
         
         return order
     

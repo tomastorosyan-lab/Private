@@ -35,6 +35,9 @@ class User(Base):
     delivery_address = Column(String, nullable=True)  # Адрес доставки (для заказчиков)
     # Минимальная сумма заказа для поставщика (₽); 0 — без ограничения
     min_order_amount = Column(Numeric(12, 2), nullable=False, default=0, server_default="0")
+    telegram_chat_id = Column(String, nullable=True)  # Chat ID поставщика для Telegram-уведомлений
+    telegram_notifications_enabled = Column(Boolean, nullable=False, default=False, server_default="false")
+    telegram_connect_code = Column(String, nullable=True, index=True)  # Одноразовый код привязки Telegram
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

@@ -61,6 +61,11 @@ class UserResponse(BaseModel):
         default=Decimal("0"),
         description="Минимальная сумма заказа для поставщика (₽), 0 — без ограничения",
     )
+    telegram_chat_id: str | None = Field(None, description="Telegram chat_id для уведомлений поставщика")
+    telegram_notifications_enabled: bool = Field(
+        default=False,
+        description="Включены ли Telegram-уведомления о новых заказах",
+    )
     
     class Config:
         from_attributes = True
@@ -82,6 +87,15 @@ class UserUpdate(BaseModel):
         description="Минимальная сумма заказа для поставщика (₽), 0 — без ограничения",
         ge=0,
     )
+    telegram_notifications_enabled: bool | None = Field(
+        None,
+        description="Включить или выключить Telegram-уведомления о новых заказах",
+    )
+
+
+class TelegramConnectCodeResponse(BaseModel):
+    code: str = Field(..., description="Одноразовый код для команды /start в Telegram")
+    bot_username: str | None = Field(None, description="Username Telegram-бота без @")
 
 
 class Token(BaseModel):

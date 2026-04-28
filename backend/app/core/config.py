@@ -56,6 +56,11 @@ class Settings(BaseSettings):
     SMTP_USE_SSL: bool = False
     SMTP_FROM_EMAIL: Optional[str] = None
     SMTP_FROM_NAME: str = "DIS"
+    PUBLIC_SITE_URL: str = "https://abkhazhub.ru"
+    # Telegram-уведомления поставщикам о новых заказах
+    TELEGRAM_BOT_TOKEN: Optional[str] = None
+    TELEGRAM_BOT_USERNAME: Optional[str] = None
+    TELEGRAM_WEBHOOK_SECRET: Optional[str] = None
     # Email-верификация регистрации
     EMAIL_VERIFICATION_ENABLED: bool = False
     EMAIL_VERIFICATION_CODE_TTL_MINUTES: int = 10

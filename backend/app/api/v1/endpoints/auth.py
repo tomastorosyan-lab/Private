@@ -23,6 +23,7 @@ from app.schemas.auth import (
     PasswordResetRequest,
     PasswordResetConfirm,
     PasswordResetResponse,
+    TelegramConnectCodeResponse,
 )
 from app.services.auth_service import AuthService
 from app.models.user import User
@@ -278,6 +279,38 @@ async def update_current_user(
     """
     service = AuthService(db)
     return await service.update_user(current_user.id, user_update)
+
+
+@router.post(
+    "/me/telegram/connect-code",
+    response_model=TelegramConnectCodeResponse,
+    summary="Код подключения Telegram для поставщика",
+    tags=["Аутентификация"],
+)
+async def create_telegram_connect_code(
+    current_user: User = Depends(get_current_user_dep),
+    db: Session = Depends(get_db),
+):
+    service = AuthService(db)
+    code = await service.create_telegram_connect_code(current_user.id)
+    return TelegramConnectCodeResponse(
+        code=code,
+        bot_username=settings.TELEGRAM_BOT_USERNAME,
+    )
+
+
+@router.delete(
+    "/me/telegram",
+    response_model=UserResponse,
+    summary="Отключение Telegram-уведомлений поставщика",
+    tags=["Аутентификация"],
+)
+async def disconnect_telegram(
+    current_user: User = Depends(get_current_user_dep),
+    db: Session = Depends(get_db),
+):
+    service = AuthService(db)
+    return await service.disconnect_telegram(current_user.id)
 
 
 @router.post(

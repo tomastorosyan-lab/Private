@@ -16,6 +16,8 @@ export interface User {
   logo_url?: string | null;
   delivery_address?: string | null;
   min_order_amount?: string | number;
+  telegram_chat_id?: string | null;
+  telegram_notifications_enabled?: boolean;
 }
 
 export class AuthService {

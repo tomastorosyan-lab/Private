@@ -24,6 +24,8 @@ export interface User {
   delivery_address?: string | null;
   /** Минимальная сумма заказа для поставщика (₽), 0 — без ограничения */
   min_order_amount?: string | number;
+  telegram_chat_id?: string | null;
+  telegram_notifications_enabled?: boolean;
 }
 
 export interface OrderItem {
@@ -319,10 +321,23 @@ class ApiClient {
     integration_type?: string;
     integration_config?: any;
     min_order_amount?: number;
+    telegram_notifications_enabled?: boolean;
   }) {
     return this.request<User>(`/auth/me`, {
       method: 'PATCH',
       body: JSON.stringify(profileData),
+    });
+  }
+
+  async createTelegramConnectCode(): Promise<{ code: string; bot_username?: string | null }> {
+    return this.request<{ code: string; bot_username?: string | null }>(`/auth/me/telegram/connect-code`, {
+      method: 'POST',
+    });
+  }
+
+  async disconnectTelegram(): Promise<User> {
+    return this.request<User>(`/auth/me/telegram`, {
+      method: 'DELETE',
     });
   }
 

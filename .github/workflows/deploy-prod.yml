@@ -20,12 +20,16 @@ jobs:
           SMTP_USE_SSL: ${{ secrets.SMTP_USE_SSL }}
           SMTP_FROM_EMAIL: ${{ secrets.SMTP_FROM_EMAIL }}
           SMTP_FROM_NAME: ${{ secrets.SMTP_FROM_NAME }}
+          PUBLIC_SITE_URL: ${{ secrets.PUBLIC_SITE_URL }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_BOT_USERNAME: ${{ secrets.TELEGRAM_BOT_USERNAME }}
+          TELEGRAM_WEBHOOK_SECRET: ${{ secrets.TELEGRAM_WEBHOOK_SECRET }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT }}
-          envs: EMAIL_VERIFICATION_ENABLED,SMTP_HOST,SMTP_PORT,SMTP_USERNAME,SMTP_PASSWORD,SMTP_USE_TLS,SMTP_USE_SSL,SMTP_FROM_EMAIL,SMTP_FROM_NAME
+          envs: EMAIL_VERIFICATION_ENABLED,SMTP_HOST,SMTP_PORT,SMTP_USERNAME,SMTP_PASSWORD,SMTP_USE_TLS,SMTP_USE_SSL,SMTP_FROM_EMAIL,SMTP_FROM_NAME,PUBLIC_SITE_URL,TELEGRAM_BOT_TOKEN,TELEGRAM_BOT_USERNAME,TELEGRAM_WEBHOOK_SECRET
           script: |
             cd /opt/dis
             python3 - <<'PY'
@@ -43,7 +47,12 @@ jobs:
                 "SMTP_USE_SSL": os.environ["SMTP_USE_SSL"],
                 "SMTP_FROM_EMAIL": os.environ["SMTP_FROM_EMAIL"],
                 "SMTP_FROM_NAME": os.environ["SMTP_FROM_NAME"],
+                "PUBLIC_SITE_URL": os.environ.get("PUBLIC_SITE_URL") or "https://abkhazhub.ru",
             }
+            for key in ("TELEGRAM_BOT_TOKEN", "TELEGRAM_BOT_USERNAME", "TELEGRAM_WEBHOOK_SECRET"):
+                value = os.environ.get(key)
+                if value:
+                    updates[key] = value
 
             lines = env_path.read_text().splitlines() if env_path.exists() else []
             seen = set()

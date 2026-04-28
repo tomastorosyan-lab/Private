@@ -2,7 +2,7 @@
 Главный роутер API v1
 """
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, products, orders, distributors, inventory, categories
+from app.api.v1.endpoints import auth, products, orders, distributors, inventory, categories, telegram
 
 api_router = APIRouter()
 
@@ -13,4 +13,5 @@ api_router.include_router(orders.router, prefix="/orders")
 api_router.include_router(distributors.router, prefix="/distributors")
 api_router.include_router(inventory.router, prefix="/inventory")
 api_router.include_router(categories.router, prefix="/categories")
+api_router.include_router(telegram.router, prefix="/telegram")
 
