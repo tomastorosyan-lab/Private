@@ -87,7 +87,6 @@ export default function ProfilePage() {
     password: '',
     description: '',
     contact_phone: '',
-    integration_type: '',
     delivery_address: '',
     min_order_amount: '',
     telegram_notifications_enabled: false,
@@ -113,7 +112,6 @@ export default function ProfilePage() {
         password: '',
         description: userData.description || '',
         contact_phone: userData.contact_phone || '',
-        integration_type: userData.integration_type || 'manual',
         delivery_address: userData.delivery_address || '',
         min_order_amount:
           userData.min_order_amount != null && String(userData.min_order_amount).trim() !== ''
@@ -264,9 +262,6 @@ export default function ProfilePage() {
       }
       if (formData.contact_phone !== user?.contact_phone) {
         updateData.contact_phone = formData.contact_phone || null;
-      }
-      if (formData.integration_type !== user?.integration_type) {
-        updateData.integration_type = formData.integration_type || null;
       }
       if (formData.delivery_address !== user?.delivery_address) {
         updateData.delivery_address = formData.delivery_address || null;
@@ -791,24 +786,6 @@ export default function ProfilePage() {
                   </p>
                 </div>
               )}
-            </div>
-          )}
-
-          {user.user_type === 'supplier' && (
-            <div>
-              <label htmlFor="integration_type" className="block text-sm font-medium text-gray-700">
-                Тип интеграции
-              </label>
-              <select
-                id="integration_type"
-                value={formData.integration_type || 'manual'}
-                onChange={(e) => setFormData({ ...formData, integration_type: e.target.value })}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
-              >
-                <option value="manual">Ручной ввод</option>
-                <option value="api">API</option>
-                <option value="file">Файл</option>
-              </select>
             </div>
           )}
 
