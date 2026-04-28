@@ -252,9 +252,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 className="flex items-center px-2 py-2 text-lg font-semibold tracking-tight text-slate-800 sm:text-xl"
               >
                 <img
-                  src="/logo.png"
+                  src="/logo.svg"
                   alt="абхазхаб"
-                  className="mr-2 h-8 w-8 flex-shrink-0 rounded-md object-cover"
+                  className="mr-2 h-8 w-8 flex-shrink-0"
                 />
                 <span className="hidden sm:inline">абхазхаб</span>
               </Link>
