@@ -67,26 +67,75 @@ echo "[deploy] Telegram polling status"
 compose ps telegram_polling || true
 compose logs --tail=50 telegram_polling || true
 
-echo "[deploy] Telegram net-debug endpoint call (api.telegram.org:443) from backend container"
+echo "[deploy] Outbound TCP diagnostics from backend container (443)"
 compose exec -T backend python3 - <<'PY'
 import json
-import os
-from urllib import error, request
+import socket
+import time
 
-secret = os.environ.get("TELEGRAM_WEBHOOK_SECRET") or ""
-url = f"http://127.0.0.1:8000/api/v1/telegram/net-debug/{secret}"
+targets = [
+    {"name": "telegram", "host": "api.telegram.org", "port": 443},
+    {"name": "cloudflare-ip", "host": "1.1.1.1", "port": 443},
+    {"name": "github", "host": "github.com", "port": 443},
+]
 
-try:
-    with request.urlopen(request.Request(url, method="GET"), timeout=20) as resp:
-        print(resp.read().decode("utf-8", errors="replace"))
-except error.HTTPError as e:
-    # FastAPI обычно возвращает JSON с detail
+def resolve_ipv4(host: str, port: int):
+    infos = socket.getaddrinfo(host, port, family=socket.AF_INET, type=socket.SOCK_STREAM)
+    ips = []
+    for info in infos:
+        ip = info[4][0]
+        if ip not in ips:
+            ips.append(ip)
+    return ips
+
+def try_connect(ip: str, port: int, timeout_s: float):
+    with socket.create_connection((ip, port), timeout=timeout_s):
+        return True
+
+started = time.time()
+results = []
+for t in targets:
+    name = t["name"]
+    host = t["host"]
+    port = t["port"]
+    resolved_ipv4 = []
+    dns_error = None
     try:
-        print(e.read().decode("utf-8", errors="replace"))
-    except Exception:
-        print(json.dumps({"ok": False, "http_status": e.code}, ensure_ascii=False))
-except Exception as e:
-    print(json.dumps({"ok": False, "error": type(e).__name__, "message": str(e)}, ensure_ascii=False))
+        # Если host уже IP — резолвить необязательно, но getaddrinfo всё равно вернёт AF_INET адрес.
+        resolved_ipv4 = resolve_ipv4(host, port)
+    except Exception as exc:
+        dns_error = f"{type(exc).__name__}:{exc}"
+
+    connect_ok = False
+    connect_error = None
+    connect_attempts = []
+    ips_to_try = resolved_ipv4[:10] if resolved_ipv4 else []
+    for ip in ips_to_try:
+        try:
+            try_connect(ip, port, timeout_s=3.0)
+            connect_ok = True
+            connect_attempts.append({"ip": ip, "ok": True})
+            break
+        except Exception as exc:
+            connect_attempts.append({"ip": ip, "ok": False, "error": f"{type(exc).__name__}:{exc}"})
+    if not connect_attempts and dns_error:
+        connect_error = dns_error
+
+    results.append(
+        {
+            "name": name,
+            "host": host,
+            "port": port,
+            "resolved_ipv4": resolved_ipv4,
+            "dns_error": dns_error,
+            "connect_ok": connect_ok,
+            "connect_error": connect_error,
+            "connect_attempts": connect_attempts,
+        }
+    )
+
+elapsed_ms = int((time.time() - started) * 1000)
+print(json.dumps({"elapsed_ms": elapsed_ms, "results": results}, ensure_ascii=False))
 PY
 
 echo "[deploy] Health check (backend container)"
