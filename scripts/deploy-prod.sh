@@ -151,4 +151,29 @@ PY
   sleep 3
 done
 
+echo "[deploy] Host-level upstream checks"
+curl -fsS --max-time 10 "http://127.0.0.1:8000/health" >/dev/null
+curl -fsSI --max-time 10 "http://127.0.0.1:3000/" >/dev/null
+echo "[deploy] Host upstreams are reachable"
+
+echo "[deploy] Reload host nginx"
+if command -v systemctl >/dev/null 2>&1; then
+  systemctl reload nginx || systemctl restart nginx
+else
+  service nginx reload || service nginx restart
+fi
+
+echo "[deploy] Public health check through host nginx"
+for attempt in $(seq 1 10); do
+  if curl -fsS --max-time 15 "https://abkhazhub.ru/health" >/dev/null; then
+    echo "[deploy] Public nginx health check passed on attempt ${attempt}"
+    break
+  fi
+  if [ "${attempt}" -eq 10 ]; then
+    echo "[deploy] ERROR: public nginx health check failed after ${attempt} attempts" >&2
+    exit 1
+  fi
+  sleep 3
+done
+
 echo "[deploy] Done"
