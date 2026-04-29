@@ -33,8 +33,26 @@ compose exec -T db pg_dump -U postgres -d dis_db > "${BACKUP_DIR}/db-${TIMESTAMP
 echo "[deploy] DB backup saved: ${BACKUP_DIR}/db-${TIMESTAMP}.sql"
 
 # Backup uploaded media files so accidental volume issues are recoverable.
-compose exec -T backend sh -lc 'cd /app && tar -czf - uploads' > "${BACKUP_DIR}/uploads-${TIMESTAMP}.tgz"
-echo "[deploy] Uploads backup saved: ${BACKUP_DIR}/uploads-${TIMESTAMP}.tgz"
+uploads_backup_path="${BACKUP_DIR}/uploads-${TIMESTAMP}.tgz"
+uploads_backup_ok=0
+for attempt in $(seq 1 10); do
+  set +e
+  compose exec -T backend sh -lc 'cd /app && tar -czf - uploads' > "${uploads_backup_path}"
+  rc=$?
+  set -e
+  if [ "$rc" -eq 0 ]; then
+    uploads_backup_ok=1
+    echo "[deploy] Uploads backup saved: ${uploads_backup_path}"
+    break
+  fi
+  echo "[deploy] Uploads backup attempt ${attempt}/10 failed; backend may be restarting, retrying in 3s..."
+  sleep 3
+done
+
+if [ "$uploads_backup_ok" -ne 1 ]; then
+  rm -f "${uploads_backup_path}"
+  echo "[deploy] WARNING: failed to backup uploads after retries; continuing deploy"
+fi
 
 # Keep rolling backups for 14 days.
 find "${BACKUP_DIR}" -type f -mtime +14 -delete
