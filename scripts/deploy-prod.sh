@@ -67,6 +67,43 @@ echo "[deploy] Telegram polling status"
 compose ps telegram_polling || true
 compose logs --tail=50 telegram_polling || true
 
+echo "[deploy] Telegram net-debug (connection to api.telegram.org)"
+WEBHOOK_SECRET="$(python3 - <<'PY'
+from pathlib import Path
+import re
+
+p = Path("/opt/dis/.env")
+if not p.exists():
+    print("")
+    raise SystemExit(0)
+
+txt = p.read_text(encoding="utf-8", errors="replace")
+m = re.search(r"^TELEGRAM_WEBHOOK_SECRET=(.*)$", txt, flags=re.M)
+if not m:
+    print("")
+else:
+    # Без лишних кавычек/пробелов
+    val = m.group(1).strip().strip('"').strip("'")
+    print(val)
+PY
+)"
+
+if [ -n "${WEBHOOK_SECRET}" ]; then
+  WEBHOOK_SECRET="${WEBHOOK_SECRET}" compose exec -T backend python3 - <<'PY'
+import json
+import os
+from urllib import request
+
+secret = os.environ["WEBHOOK_SECRET"]
+url = f"http://127.0.0.1:8000/api/v1/telegram/net-debug/{secret}"
+with request.urlopen(request.Request(url, method="GET"), timeout=10) as resp:
+    body = resp.read().decode("utf-8", errors="replace")
+    print(body)
+PY
+else
+  echo "[deploy] Skip telegram net-debug: TELEGRAM_WEBHOOK_SECRET is empty/not set"
+fi
+
 echo "[deploy] Health check (backend container)"
 # Prefer checking the API directly inside the backend container (avoids nginx/cache/SSL edge cases).
 for attempt in $(seq 1 20); do
