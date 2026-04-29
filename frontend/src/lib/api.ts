@@ -107,6 +107,16 @@ function raiseNetworkError(cause: unknown): never {
   throw cause instanceof Error ? cause : new Error(String(cause));
 }
 
+function isTransientGatewayStatus(status: number): boolean {
+  return status === 502 || status === 503 || status === 504;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
 function getStoredAuthToken(): string | null {
   if (typeof window === 'undefined') return null;
   const raw = localStorage.getItem('auth_token');
@@ -202,11 +212,31 @@ class ApiClient {
       fetchInit.cache = 'no-store';
     }
 
-    let response: Response;
-    try {
-      response = await fetch(url, fetchInit);
-    } catch (e) {
-      raiseNetworkError(e);
+    const maxAttempts = method === 'GET' ? 3 : 1;
+    let response: Response | null = null;
+    let lastNetworkError: unknown = null;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        response = await fetch(url, fetchInit);
+      } catch (e) {
+        lastNetworkError = e;
+        if (attempt < maxAttempts) {
+          await sleep(250 * attempt);
+          continue;
+        }
+        raiseNetworkError(e);
+      }
+
+      if (response.ok || !isTransientGatewayStatus(response.status) || attempt === maxAttempts) {
+        break;
+      }
+
+      await sleep(250 * attempt);
+    }
+
+    if (!response) {
+      raiseNetworkError(lastNetworkError);
     }
 
     if (!response.ok) {
