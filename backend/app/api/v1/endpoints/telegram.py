@@ -209,8 +209,9 @@ async def telegram_net_egress(req: Request):
         {"name": "github", "host": "github.com", "port": 443},
     ]
 
-    def resolve_ipv4(host: str, port: int) -> list[str]:
-        infos = socket.getaddrinfo(host, port, family=socket.AF_INET, type=socket.SOCK_STREAM)
+    def resolve_addresses(host: str, port: int) -> list[str]:
+        # Берём и IPv4, и IPv6, чтобы понять, доступен ли Telegram по альтернативному семейству.
+        infos = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
         ips: list[str] = []
         for info in infos:
             ip = info[4][0]
@@ -232,7 +233,7 @@ async def telegram_net_egress(req: Request):
         resolved_ipv4: list[str] = []
         dns_error: str | None = None
         try:
-            resolved_ipv4 = resolve_ipv4(host, port)
+            resolved_ipv4 = resolve_addresses(host, port)
         except Exception as exc:
             dns_error = f"{type(exc).__name__}:{exc}"
 
@@ -263,7 +264,7 @@ async def telegram_net_egress(req: Request):
                 "name": name,
                 "host": host,
                 "port": port,
-                "resolved_ipv4": resolved_ipv4,
+                "resolved_addresses": resolved_ipv4,
                 "dns_error": dns_error,
                 "connect_ok": connect_ok,
                 "connect_error": connect_error,
