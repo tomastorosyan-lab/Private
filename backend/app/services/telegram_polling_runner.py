@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import logging
+import socket
 import time
 
 from app.core.config import settings
@@ -26,6 +27,51 @@ def main() -> None:
     if not settings.TELEGRAM_POLLING_ENABLED:
         logger.info("Telegram polling disabled")
         return
+
+    # Быстрая диагностика исходящего доступа внутри контейнера.
+    # Это помогает понять, блокирует ли VDS/контейнер сеть до Telegram API.
+    host = "api.telegram.org"
+    port = 443
+    started = time.time()
+    resolved_ipv4: list[str] = []
+    connect_attempts: list[dict] = []
+    connect_ok = False
+    connect_error: str | None = None
+    try:
+        infos = socket.getaddrinfo(host, port, family=socket.AF_INET, type=socket.SOCK_STREAM)
+        for info in infos[:5]:
+            addr = info[4][0]
+            if addr not in resolved_ipv4:
+                resolved_ipv4.append(addr)
+    except Exception as exc:
+        resolved_ipv4 = [f"DNS_ERROR:{type(exc).__name__}:{exc}"]
+
+    try:
+        for ip in resolved_ipv4[:10]:
+            if ip.startswith("DNS_ERROR"):
+                continue
+            try:
+                with socket.create_connection((ip, port), timeout=3):
+                    connect_ok = True
+                connect_attempts.append({"ip": ip, "ok": True})
+                break
+            except Exception as exc:
+                connect_attempts.append({"ip": ip, "ok": False, "error": f"{type(exc).__name__}:{exc}"})
+    except Exception as exc:
+        connect_error = f"{type(exc).__name__}:{exc}"
+
+    elapsed_ms = int((time.time() - started) * 1000)
+    logger.info(
+        "Telegram net diagnostics: host=%s port=%s resolved_ipv4=%s connect_ok=%s connect_error=%s connect_attempts=%s elapsed_ms=%s",
+        host,
+        port,
+        resolved_ipv4,
+        connect_ok,
+        connect_error,
+        connect_attempts,
+        elapsed_ms,
+    )
+
     if not TelegramService.is_configured():
         logger.info("Telegram polling disabled: bot token is not configured")
         return

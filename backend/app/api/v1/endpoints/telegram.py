@@ -2,6 +2,8 @@
 Webhook Telegram-бота.
 """
 import json
+import socket
+import time
 from urllib import error, request
 
 from fastapi import APIRouter, Depends, HTTPException, Path, status
@@ -132,4 +134,59 @@ async def telegram_bot_debug(secret: str = Path(..., description="Секрет w
         "configured": True,
         "get_me": call("getMe"),
         "get_updates": call("getUpdates", {"timeout": 0, "allowed_updates": ["message", "edited_message"]}),
+    }
+
+
+@router.get(
+    "/net-debug/{secret}",
+    summary="Проверка сетевого доступа к Telegram (без токена)",
+    tags=["Telegram"],
+)
+async def telegram_net_debug(secret: str = Path(..., description="Секрет webhook")):
+    if not settings.TELEGRAM_WEBHOOK_SECRET or secret != settings.TELEGRAM_WEBHOOK_SECRET:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+    host = "api.telegram.org"
+    port = 443
+    started = time.time()
+    resolved: list[str] = []
+    connect_ok = False
+    connect_error: str | None = None
+    connect_attempts: list[dict] = []
+
+    try:
+        infos = socket.getaddrinfo(host, port, family=socket.AF_INET, type=socket.SOCK_STREAM)
+        for info in infos[:5]:
+            addr = info[4][0]
+            if addr not in resolved:
+                resolved.append(addr)
+    except Exception as exc:
+        resolved.append(f"DNS_ERROR:{type(exc).__name__}:{exc}")
+
+    try:
+        for ip in resolved[:10]:
+            if ip.startswith("DNS_ERROR"):
+                continue
+            ip_target = ip.split(":", 1)[0]
+            try:
+                with socket.create_connection((ip_target, port), timeout=3):
+                    connect_ok = True
+                connect_attempts.append({"ip": ip_target, "ok": True})
+                break
+            except Exception as exc:
+                connect_attempts.append(
+                    {"ip": ip_target, "ok": False, "error": f"{type(exc).__name__}:{exc}"}
+                )
+    except Exception as exc:
+        connect_error = f"{type(exc).__name__}:{exc}"
+
+    elapsed_ms = int((time.time() - started) * 1000)
+    return {
+        "host": host,
+        "port": port,
+        "resolved_ipv4": resolved,
+        "connect_ok": connect_ok,
+        "connect_error": connect_error,
+        "connect_attempts": connect_attempts,
+        "elapsed_ms": elapsed_ms,
     }
