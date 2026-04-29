@@ -291,6 +291,12 @@ async def create_telegram_connect_code(
     current_user: User = Depends(get_current_user_dep),
     db: Session = Depends(get_db),
 ):
+    # Telegram integration is disabled (server cannot reach api.telegram.org:443).
+    if not settings.TELEGRAM_BOT_TOKEN:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Telegram integration disabled",
+        )
     service = AuthService(db)
     code = await service.create_telegram_connect_code(current_user.id)
     # Telegram deep-links ожидают username *без* символа '@'.

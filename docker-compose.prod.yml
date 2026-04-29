@@ -40,9 +40,10 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: dis_telegram_polling
-    restart: unless-stopped
+    restart: "no"
     network_mode: host
-    command: python -m app.services.telegram_polling_runner
+    # Telegram integration временно отключена (сервер не может достучаться до api.telegram.org).
+    command: sh -c 'echo "Telegram polling disabled"; exit 0'
     env_file:
       - .env
     environment:
