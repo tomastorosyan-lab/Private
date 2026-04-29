@@ -35,6 +35,9 @@ jobs:
           script: |
             cd /opt/dis
             git remote set-url origin https://github.com/tomastorosyan-lab/Private.git
+            git fetch origin main
+            git checkout main
+            git reset --hard origin/main
             python3 - <<'PY'
             import os
             from pathlib import Path
