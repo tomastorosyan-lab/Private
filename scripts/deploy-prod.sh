@@ -73,7 +73,20 @@ if [ -n "${stale_frontends}" ]; then
   echo "[deploy] Remove stale frontend containers before recreate"
   docker rm -f ${stale_frontends} || true
 fi
-compose up -d frontend
+frontend_started=0
+for attempt in $(seq 1 8); do
+  if compose up -d frontend; then
+    frontend_started=1
+    break
+  fi
+  echo "[deploy] Frontend recreate attempt ${attempt}/8 failed; retrying in 3s..."
+  sleep 3
+done
+
+if [ "${frontend_started}" -ne 1 ]; then
+  echo "[deploy] ERROR: failed to recreate frontend container after retries" >&2
+  exit 1
+fi
 
 echo "[deploy] Run DB migrations"
 compose exec -T backend alembic upgrade head
