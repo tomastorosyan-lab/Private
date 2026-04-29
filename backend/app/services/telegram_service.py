@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import socket
 from typing import Iterable
 from urllib import error, request
@@ -51,12 +52,32 @@ class TelegramService:
 
         try:
             socket.getaddrinfo = ipv4_getaddrinfo
-            with request.urlopen(req, timeout=request_timeout) as resp:
-                body = resp.read().decode("utf-8", errors="replace")
-                if resp.status >= 400:
-                    logger.warning("Telegram API returned HTTP %s: %s", resp.status, body)
-                    return None
-                return json.loads(body)
+            # Прокси обычно задают на уровне окружения (HTTPS_PROXY/HTTP_PROXY).
+            # Явно прокидываем ProxyHandler, чтобы urllib точно использовал их.
+            http_proxy = os.environ.get("HTTP_PROXY") or os.environ.get("http_proxy")
+            https_proxy = os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy")
+            proxies: dict[str, str] = {}
+            if http_proxy:
+                proxies["http"] = http_proxy
+            if https_proxy:
+                proxies["https"] = https_proxy
+
+            opener = request.build_opener(request.ProxyHandler(proxies)) if proxies else None
+            resp_status: int | None = None
+            if opener is not None:
+                logger.info("Telegram API request via proxy (from env)")
+                with opener.open(req, timeout=request_timeout) as resp:
+                    resp_status = getattr(resp, "status", None)
+                    body = resp.read().decode("utf-8", errors="replace")
+            else:
+                with request.urlopen(req, timeout=request_timeout) as resp:
+                    resp_status = getattr(resp, "status", None)
+                    body = resp.read().decode("utf-8", errors="replace")
+
+            if resp_status is not None and resp_status >= 400:
+                logger.warning("Telegram API returned HTTP %s: %s", resp_status, body)
+                return None
+            return json.loads(body)
         except (error.URLError, TimeoutError, OSError):
             logger.exception("Telegram API request failed: %s", method)
         except json.JSONDecodeError:
