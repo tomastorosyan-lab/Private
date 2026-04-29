@@ -66,19 +66,20 @@ async def telegram_poll_once(secret: str = Path(..., description="Секрет w
     updates = TelegramService.get_updates(timeout=0)
     processed = 0
     max_update_id = None
+    for update in updates:
+        update_id = update.get("update_id")
+        if isinstance(update_id, int):
+            max_update_id = update_id if max_update_id is None else max(max_update_id, update_id)
+    if max_update_id is not None:
+        TelegramService.get_updates(offset=max_update_id + 1, timeout=0)
+
     db = SessionLocal()
     try:
         for update in updates:
-            update_id = update.get("update_id")
-            if isinstance(update_id, int):
-                max_update_id = update_id if max_update_id is None else max(max_update_id, update_id)
             if TelegramService.handle_update(db, update):
                 processed += 1
     finally:
         db.close()
-
-    if max_update_id is not None:
-        TelegramService.get_updates(offset=max_update_id + 1, timeout=0)
 
     return {"ok": True, "received": len(updates), "processed": processed}
 

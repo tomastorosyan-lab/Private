@@ -92,10 +92,6 @@ class TelegramService:
 
         parts = text.split(maxsplit=1)
         if len(parts) < 2 or not parts[1].strip():
-            TelegramService.send_message(
-                chat_id,
-                "Для подключения уведомлений откройте профиль на сайте и отправьте команду /start с кодом.",
-            )
             return True
 
         code = parts[1].strip().upper()

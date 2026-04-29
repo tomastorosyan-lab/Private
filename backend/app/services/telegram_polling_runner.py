@@ -38,10 +38,16 @@ def main() -> None:
                 offset=offset,
                 timeout=settings.TELEGRAM_POLLING_TIMEOUT_SECONDS,
             )
+            max_update_id = None
             for update in updates:
                 update_id = update.get("update_id")
                 if isinstance(update_id, int):
-                    offset = update_id + 1
+                    max_update_id = update_id if max_update_id is None else max(max_update_id, update_id)
+            if max_update_id is not None:
+                offset = max_update_id + 1
+                # Подтверждаем Telegram получение пачки до обработки, чтобы старые сообщения не зависали.
+                TelegramService.get_updates(offset=offset, timeout=0)
+            for update in updates:
                 process_update(update)
         except Exception:
             logger.exception("Telegram polling runner iteration failed")
