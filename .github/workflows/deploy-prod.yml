@@ -34,6 +34,7 @@ jobs:
           envs: EMAIL_VERIFICATION_ENABLED,SMTP_HOST,SMTP_PORT,SMTP_USERNAME,SMTP_PASSWORD,SMTP_USE_TLS,SMTP_USE_SSL,SMTP_FROM_EMAIL,SMTP_FROM_NAME,PUBLIC_SITE_URL,TELEGRAM_BOT_TOKEN,TELEGRAM_BOT_USERNAME,TELEGRAM_WEBHOOK_SECRET,TELEGRAM_POLLING_ENABLED,TELEGRAM_POLLING_TIMEOUT_SECONDS
           script: |
             cd /opt/dis
+            git remote set-url origin https://github.com/tomastorosyan-lab/Private.git
             python3 - <<'PY'
             import os
             from pathlib import Path
