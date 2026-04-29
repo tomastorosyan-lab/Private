@@ -41,11 +41,12 @@ services:
       dockerfile: Dockerfile
     container_name: dis_telegram_polling
     restart: unless-stopped
+    network_mode: host
     command: python -m app.services.telegram_polling_runner
     env_file:
       - .env
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/dis_db}
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@127.0.0.1:5432/dis_db
     depends_on:
       db:
         condition: service_healthy
