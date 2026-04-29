@@ -35,6 +35,21 @@ services:
       db:
         condition: service_healthy
 
+  telegram_polling:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: dis_telegram_polling
+    restart: unless-stopped
+    command: python -m app.services.telegram_polling_runner
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/dis_db}
+    depends_on:
+      db:
+        condition: service_healthy
+
   frontend:
     build:
       context: ./frontend
