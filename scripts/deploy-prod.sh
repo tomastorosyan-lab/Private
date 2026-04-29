@@ -36,11 +36,7 @@ echo "[deploy] DB backup saved: ${BACKUP_DIR}/db-${TIMESTAMP}.sql"
 uploads_backup_path="${BACKUP_DIR}/uploads-${TIMESTAMP}.tgz"
 uploads_backup_ok=0
 for attempt in $(seq 1 10); do
-  set +e
-  compose exec -T backend sh -lc 'cd /app && tar -czf - uploads' > "${uploads_backup_path}"
-  rc=$?
-  set -e
-  if [ "$rc" -eq 0 ]; then
+  if compose exec -T backend sh -lc 'cd /app && tar -czf - uploads' > "${uploads_backup_path}"; then
     uploads_backup_ok=1
     echo "[deploy] Uploads backup saved: ${uploads_backup_path}"
     break
