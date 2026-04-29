@@ -59,7 +59,9 @@ fi
 find "${BACKUP_DIR}" -type f -mtime +14 -delete
 
 echo "[deploy] Build and restart containers"
-compose up -d --build
+# Cleanup legacy container from previous project layout if it still holds port 3000.
+docker rm -f dis_web >/dev/null 2>&1 || true
+compose up -d --build --remove-orphans
 
 # Применяем idempotent SQL-патчи схемы перед запуском backend-операций.
 if ls "${APP_DIR}/scripts/sql/"*.sql >/dev/null 2>&1; then
