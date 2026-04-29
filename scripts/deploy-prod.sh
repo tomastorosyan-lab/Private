@@ -67,6 +67,12 @@ fi
 # Отдельно пересобираем фронт без кэша — иначе Docker иногда оставляет старый слой Next.js и «изменений не видно».
 echo "[deploy] Rebuild frontend image without cache and restart frontend container"
 compose build --no-cache frontend
+# Иногда на хосте остаются "залипшие" контейнеры *dis_frontend и мешают recreate (name conflict).
+stale_frontends="$(docker ps -aq --filter "name=dis_frontend")"
+if [ -n "${stale_frontends}" ]; then
+  echo "[deploy] Remove stale frontend containers before recreate"
+  docker rm -f ${stale_frontends} || true
+fi
 compose up -d frontend
 
 echo "[deploy] Run DB migrations"
