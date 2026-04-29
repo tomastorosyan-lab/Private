@@ -60,15 +60,8 @@ class TelegramPollingWorker:
                 await asyncio.sleep(2)
 
     def _process_update(self, update: dict) -> None:
-        message = update.get("message") or update.get("edited_message") or {}
-        text = str(message.get("text") or "").strip()
-        chat = message.get("chat") or {}
-        chat_id = chat.get("id")
-        if chat_id is None or not text:
-            return
-
         db = SessionLocal()
         try:
-            TelegramService.handle_start_command(db, str(chat_id), text)
+            TelegramService.handle_update(db, update)
         finally:
             db.close()

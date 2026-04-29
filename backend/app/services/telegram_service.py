@@ -123,6 +123,16 @@ class TelegramService:
         return True
 
     @staticmethod
+    def handle_update(db, update: dict) -> bool:
+        message = update.get("message") or update.get("edited_message") or {}
+        text = str(message.get("text") or "").strip()
+        chat = message.get("chat") or {}
+        chat_id = chat.get("id")
+        if chat_id is None or not text:
+            return False
+        return TelegramService.handle_start_command(db, str(chat_id), text)
+
+    @staticmethod
     def send_new_order_notification(
         order: Order,
         customer: User,

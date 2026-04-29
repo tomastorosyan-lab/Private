@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.database import SessionLocal
 from app.services.telegram_service import TelegramService
 
 router = APIRouter()
@@ -33,3 +34,47 @@ async def telegram_webhook(
 
     TelegramService.handle_start_command(db, str(chat_id), text)
     return {"ok": True}
+
+
+@router.get(
+    "/polling-status/{secret}",
+    summary="Статус Telegram polling",
+    tags=["Telegram"],
+)
+async def telegram_polling_status(secret: str = Path(..., description="Секрет webhook")):
+    if not settings.TELEGRAM_WEBHOOK_SECRET or secret != settings.TELEGRAM_WEBHOOK_SECRET:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    return {
+        "configured": TelegramService.is_configured(),
+        "polling_enabled": settings.TELEGRAM_POLLING_ENABLED,
+        "polling_timeout_seconds": settings.TELEGRAM_POLLING_TIMEOUT_SECONDS,
+    }
+
+
+@router.post(
+    "/poll-once/{secret}",
+    summary="Однократная обработка Telegram updates",
+    tags=["Telegram"],
+)
+async def telegram_poll_once(secret: str = Path(..., description="Секрет webhook")):
+    if not settings.TELEGRAM_WEBHOOK_SECRET or secret != settings.TELEGRAM_WEBHOOK_SECRET:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+    updates = TelegramService.get_updates(timeout=0)
+    processed = 0
+    max_update_id = None
+    db = SessionLocal()
+    try:
+        for update in updates:
+            update_id = update.get("update_id")
+            if isinstance(update_id, int):
+                max_update_id = update_id if max_update_id is None else max(max_update_id, update_id)
+            if TelegramService.handle_update(db, update):
+                processed += 1
+    finally:
+        db.close()
+
+    if max_update_id is not None:
+        TelegramService.get_updates(offset=max_update_id + 1, timeout=0)
+
+    return {"ok": True, "received": len(updates), "processed": processed}
