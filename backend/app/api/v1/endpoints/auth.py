@@ -293,9 +293,11 @@ async def create_telegram_connect_code(
 ):
     service = AuthService(db)
     code = await service.create_telegram_connect_code(current_user.id)
+    # Telegram deep-links ожидают username *без* символа '@'.
+    bot_username = settings.TELEGRAM_BOT_USERNAME.lstrip("@") if settings.TELEGRAM_BOT_USERNAME else None
     return TelegramConnectCodeResponse(
         code=code,
-        bot_username=settings.TELEGRAM_BOT_USERNAME,
+        bot_username=bot_username,
     )
 
 

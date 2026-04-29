@@ -48,7 +48,8 @@ const validatePassword = (password: string): string | null => {
 
 const getTelegramStartLink = (botUsername: string | null, code: string) => {
   if (!botUsername || !code) return '';
-  return `https://t.me/${botUsername}?start=${encodeURIComponent(code)}`;
+  const sanitized = botUsername.replace(/^@+/, '');
+  return `https://t.me/${sanitized}?start=${encodeURIComponent(code)}`;
 };
 
 const getTelegramQrUrl = (telegramLink: string) => {
@@ -775,7 +776,7 @@ export default function ProfilePage() {
                 })()}
                 <p className="font-medium text-slate-900">Код подключения: {telegramConnectCode}</p>
                 <p className="mt-1">
-                  Откройте {telegramBotUsername ? `@${telegramBotUsername}` : 'Telegram-бота магазина'} и отправьте:
+                  Откройте {telegramBotUsername ? `@${telegramBotUsername.replace(/^@+/, '')}` : 'Telegram-бота магазина'} и отправьте:
                 </p>
                 <code className="mt-2 block rounded bg-slate-100 px-2 py-1 text-slate-900">
                   /start {telegramConnectCode}
