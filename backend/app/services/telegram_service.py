@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import logging
+import socket
 from typing import Iterable
 from urllib import error, request
 
@@ -43,7 +44,13 @@ class TelegramService:
             headers={"Content-Type": "application/json"},
             method="POST",
         )
+        original_getaddrinfo = socket.getaddrinfo
+
+        def ipv4_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
+            return original_getaddrinfo(host, port, socket.AF_INET, type, proto, flags)
+
         try:
+            socket.getaddrinfo = ipv4_getaddrinfo
             with request.urlopen(req, timeout=request_timeout) as resp:
                 body = resp.read().decode("utf-8", errors="replace")
                 if resp.status >= 400:
@@ -54,6 +61,8 @@ class TelegramService:
             logger.exception("Telegram API request failed: %s", method)
         except json.JSONDecodeError:
             logger.exception("Telegram API returned invalid JSON: %s", method)
+        finally:
+            socket.getaddrinfo = original_getaddrinfo
         return None
 
     @staticmethod
