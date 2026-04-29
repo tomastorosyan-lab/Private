@@ -67,61 +67,26 @@ echo "[deploy] Telegram polling status"
 compose ps telegram_polling || true
 compose logs --tail=50 telegram_polling || true
 
-echo "[deploy] Telegram TCP diagnostics (api.telegram.org:443) from backend container"
+echo "[deploy] Telegram net-debug endpoint call (api.telegram.org:443) from backend container"
 compose exec -T backend python3 - <<'PY'
 import json
-import socket
-import time
+import os
+from urllib import error, request
 
-host = "api.telegram.org"
-port = 443
-started = time.time()
-
-resolved_ipv4: list[str] = []
-connect_ok = False
-connect_error = None
-connect_attempts: list[dict] = []
+secret = os.environ.get("TELEGRAM_WEBHOOK_SECRET") or ""
+url = f"http://127.0.0.1:8000/api/v1/telegram/net-debug/{secret}"
 
 try:
-    infos = socket.getaddrinfo(host, port, family=socket.AF_INET, type=socket.SOCK_STREAM)
-    for info in infos[:5]:
-        ip = info[4][0]
-        if ip not in resolved_ipv4:
-            resolved_ipv4.append(ip)
-except Exception as exc:
-    resolved_ipv4 = [f"DNS_ERROR:{type(exc).__name__}:{exc}"]
-
-try:
-    for ip in resolved_ipv4[:10]:
-        if str(ip).startswith("DNS_ERROR"):
-            continue
-        try:
-            with socket.create_connection((ip, port), timeout=3):
-                connect_ok = True
-            connect_attempts.append({"ip": ip, "ok": True})
-            break
-        except Exception as exc:
-            connect_attempts.append(
-                {"ip": ip, "ok": False, "error": f"{type(exc).__name__}:{exc}"}
-            )
-except Exception as exc:
-    connect_error = f"{type(exc).__name__}:{exc}"
-
-elapsed_ms = int((time.time() - started) * 1000)
-print(
-    json.dumps(
-        {
-            "host": host,
-            "port": port,
-            "resolved_ipv4": resolved_ipv4,
-            "connect_ok": connect_ok,
-            "connect_error": connect_error,
-            "connect_attempts": connect_attempts,
-            "elapsed_ms": elapsed_ms,
-        },
-        ensure_ascii=False,
-    )
-)
+    with request.urlopen(request.Request(url, method="GET"), timeout=20) as resp:
+        print(resp.read().decode("utf-8", errors="replace"))
+except error.HTTPError as e:
+    # FastAPI обычно возвращает JSON с detail
+    try:
+        print(e.read().decode("utf-8", errors="replace"))
+    except Exception:
+        print(json.dumps({"ok": False, "http_status": e.code}, ensure_ascii=False))
+except Exception as e:
+    print(json.dumps({"ok": False, "error": type(e).__name__, "message": str(e)}, ensure_ascii=False))
 PY
 
 echo "[deploy] Health check (backend container)"
