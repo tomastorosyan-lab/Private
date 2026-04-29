@@ -30,10 +30,10 @@ class TelegramService:
         return bool(settings.TELEGRAM_BOT_TOKEN)
 
     @staticmethod
-    def _request(method: str, payload: dict) -> None:
+    def _request(method: str, payload: dict, request_timeout: int = 10) -> dict | None:
         if not settings.TELEGRAM_BOT_TOKEN:
             logger.info("Telegram bot token is not configured")
-            return
+            return None
 
         url = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/{method}"
         data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -44,12 +44,32 @@ class TelegramService:
             method="POST",
         )
         try:
-            with request.urlopen(req, timeout=10) as resp:
+            with request.urlopen(req, timeout=request_timeout) as resp:
                 body = resp.read().decode("utf-8", errors="replace")
                 if resp.status >= 400:
                     logger.warning("Telegram API returned HTTP %s: %s", resp.status, body)
+                    return None
+                return json.loads(body)
         except (error.URLError, TimeoutError, OSError):
             logger.exception("Telegram API request failed: %s", method)
+        except json.JSONDecodeError:
+            logger.exception("Telegram API returned invalid JSON: %s", method)
+        return None
+
+    @staticmethod
+    def get_updates(offset: int | None = None, timeout: int | None = None) -> list[dict]:
+        payload: dict = {
+            "timeout": timeout if timeout is not None else settings.TELEGRAM_POLLING_TIMEOUT_SECONDS,
+            "allowed_updates": ["message", "edited_message"],
+        }
+        if offset is not None:
+            payload["offset"] = offset
+        request_timeout = int(payload["timeout"]) + 5
+        result = TelegramService._request("getUpdates", payload, request_timeout=request_timeout)
+        if not result or not result.get("ok"):
+            return []
+        updates = result.get("result")
+        return updates if isinstance(updates, list) else []
 
     @staticmethod
     def send_message(chat_id: str, text: str) -> None:
@@ -61,6 +81,46 @@ class TelegramService:
                 "disable_web_page_preview": True,
             },
         )
+
+    @staticmethod
+    def handle_start_command(db, chat_id: str, text: str) -> bool:
+        from app.models.user import User
+
+        text = text.strip()
+        if not text.startswith("/start"):
+            return False
+
+        parts = text.split(maxsplit=1)
+        if len(parts) < 2 or not parts[1].strip():
+            TelegramService.send_message(
+                chat_id,
+                "Для подключения уведомлений откройте профиль на сайте и отправьте команду /start с кодом.",
+            )
+            return True
+
+        code = parts[1].strip().upper()
+        user = (
+            db.query(User)
+            .filter(
+                User.telegram_connect_code == code,
+                User.is_active == True,
+            )
+            .first()
+        )
+        if not user:
+            TelegramService.send_message(chat_id, "Код подключения не найден или уже использован.")
+            return True
+
+        user.telegram_chat_id = chat_id
+        user.telegram_notifications_enabled = True
+        user.telegram_connect_code = None
+        db.commit()
+
+        TelegramService.send_message(
+            chat_id,
+            f"Telegram-уведомления подключены для пользователя: {user.full_name}.",
+        )
+        return True
 
     @staticmethod
     def send_new_order_notification(

@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import get_db
-from app.models.user import User
 from app.services.telegram_service import TelegramService
 
 router = APIRouter()
@@ -29,37 +28,8 @@ async def telegram_webhook(
     text = str(message.get("text") or "").strip()
     chat = message.get("chat") or {}
     chat_id = chat.get("id")
-    if not text.startswith("/start") or chat_id is None:
+    if chat_id is None:
         return {"ok": True}
 
-    parts = text.split(maxsplit=1)
-    if len(parts) < 2 or not parts[1].strip():
-        TelegramService.send_message(
-            str(chat_id),
-            "Для подключения уведомлений откройте профиль поставщика на сайте и отправьте команду /start с кодом.",
-        )
-        return {"ok": True}
-
-    code = parts[1].strip().upper()
-    user = (
-        db.query(User)
-        .filter(
-            User.telegram_connect_code == code,
-            User.is_active == True,
-        )
-        .first()
-    )
-    if not user:
-        TelegramService.send_message(str(chat_id), "Код подключения не найден или уже использован.")
-        return {"ok": True}
-
-    user.telegram_chat_id = str(chat_id)
-    user.telegram_notifications_enabled = True
-    user.telegram_connect_code = None
-    db.commit()
-
-    TelegramService.send_message(
-        str(chat_id),
-        f"Telegram-уведомления подключены для пользователя: {user.full_name}.",
-    )
+    TelegramService.handle_start_command(db, str(chat_id), text)
     return {"ok": True}

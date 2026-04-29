@@ -1,12 +1,26 @@
 """
 Главный файл приложения FastAPI
 """
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from app.core.config import settings
 from app.api.v1.router import api_router
+from app.services.telegram_polling import TelegramPollingWorker
+
+
+telegram_polling_worker = TelegramPollingWorker()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    telegram_polling_worker.start()
+    try:
+        yield
+    finally:
+        await telegram_polling_worker.stop()
 
 app = FastAPI(
     title="DIS - Агрегатор поставщиков",
@@ -34,6 +48,7 @@ app = FastAPI(
         "name": "DIS Support",
         "email": "support@dis.example.com",
     },
+    lifespan=lifespan,
 )
 
 # Настройка CORS

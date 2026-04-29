@@ -61,6 +61,8 @@ class Settings(BaseSettings):
     TELEGRAM_BOT_TOKEN: Optional[str] = None
     TELEGRAM_BOT_USERNAME: Optional[str] = None
     TELEGRAM_WEBHOOK_SECRET: Optional[str] = None
+    TELEGRAM_POLLING_ENABLED: bool = False
+    TELEGRAM_POLLING_TIMEOUT_SECONDS: int = 25
     # Email-верификация регистрации
     EMAIL_VERIFICATION_ENABLED: bool = False
     EMAIL_VERIFICATION_CODE_TTL_MINUTES: int = 10

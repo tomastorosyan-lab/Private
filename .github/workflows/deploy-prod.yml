@@ -24,12 +24,14 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_BOT_USERNAME: ${{ secrets.TELEGRAM_BOT_USERNAME }}
           TELEGRAM_WEBHOOK_SECRET: ${{ secrets.TELEGRAM_WEBHOOK_SECRET }}
+          TELEGRAM_POLLING_ENABLED: ${{ secrets.TELEGRAM_POLLING_ENABLED }}
+          TELEGRAM_POLLING_TIMEOUT_SECONDS: ${{ secrets.TELEGRAM_POLLING_TIMEOUT_SECONDS }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT }}
-          envs: EMAIL_VERIFICATION_ENABLED,SMTP_HOST,SMTP_PORT,SMTP_USERNAME,SMTP_PASSWORD,SMTP_USE_TLS,SMTP_USE_SSL,SMTP_FROM_EMAIL,SMTP_FROM_NAME,PUBLIC_SITE_URL,TELEGRAM_BOT_TOKEN,TELEGRAM_BOT_USERNAME,TELEGRAM_WEBHOOK_SECRET
+          envs: EMAIL_VERIFICATION_ENABLED,SMTP_HOST,SMTP_PORT,SMTP_USERNAME,SMTP_PASSWORD,SMTP_USE_TLS,SMTP_USE_SSL,SMTP_FROM_EMAIL,SMTP_FROM_NAME,PUBLIC_SITE_URL,TELEGRAM_BOT_TOKEN,TELEGRAM_BOT_USERNAME,TELEGRAM_WEBHOOK_SECRET,TELEGRAM_POLLING_ENABLED,TELEGRAM_POLLING_TIMEOUT_SECONDS
           script: |
             cd /opt/dis
             python3 - <<'PY'
@@ -49,7 +51,13 @@ jobs:
                 "SMTP_FROM_NAME": os.environ["SMTP_FROM_NAME"],
                 "PUBLIC_SITE_URL": os.environ.get("PUBLIC_SITE_URL") or "https://abkhazhub.ru",
             }
-            for key in ("TELEGRAM_BOT_TOKEN", "TELEGRAM_BOT_USERNAME", "TELEGRAM_WEBHOOK_SECRET"):
+            for key in (
+                "TELEGRAM_BOT_TOKEN",
+                "TELEGRAM_BOT_USERNAME",
+                "TELEGRAM_WEBHOOK_SECRET",
+                "TELEGRAM_POLLING_ENABLED",
+                "TELEGRAM_POLLING_TIMEOUT_SECONDS",
+            ):
                 value = os.environ.get(key)
                 if value:
                     updates[key] = value
