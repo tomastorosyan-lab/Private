@@ -29,8 +29,13 @@ echo "[deploy] Create pre-deploy backups"
 mkdir -p "${BACKUP_DIR}"
 
 # Backup PostgreSQL before any container recreation.
-compose exec -T db pg_dump -U postgres -d dis_db > "${BACKUP_DIR}/db-${TIMESTAMP}.sql"
-echo "[deploy] DB backup saved: ${BACKUP_DIR}/db-${TIMESTAMP}.sql"
+db_backup_path="${BACKUP_DIR}/db-${TIMESTAMP}.sql"
+if compose exec -T db pg_dump -U postgres -d dis_db > "${db_backup_path}"; then
+  echo "[deploy] DB backup saved: ${db_backup_path}"
+else
+  rm -f "${db_backup_path}"
+  echo "[deploy] WARNING: DB backup skipped (db service is not ready yet)"
+fi
 
 # Backup uploaded media files so accidental volume issues are recoverable.
 uploads_backup_path="${BACKUP_DIR}/uploads-${TIMESTAMP}.tgz"
