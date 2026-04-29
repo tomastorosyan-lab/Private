@@ -63,6 +63,10 @@ docker inspect dis_db --format '{{range .Mounts}}{{println .Destination}}{{end}}
 docker inspect dis_backend --format '{{range .Mounts}}{{println .Destination}}{{end}}' | grep -q '/app/uploads'
 echo "[deploy] Persistent mounts are configured"
 
+echo "[deploy] Telegram polling status"
+compose ps telegram_polling || true
+compose logs --tail=50 telegram_polling || true
+
 echo "[deploy] Health check (backend container)"
 # Prefer checking the API directly inside the backend container (avoids nginx/cache/SSL edge cases).
 for attempt in $(seq 1 20); do
