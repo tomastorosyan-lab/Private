@@ -10,6 +10,9 @@ TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
 echo "[deploy] Start deploy branch: ${BRANCH}"
 cd "${APP_DIR}"
 
+# GitHub Actions SSH runs can hit "dubious ownership" after privileged ops.
+git config --global --add safe.directory "${APP_DIR}" || true
+
 # Docker Compose v2 (`docker compose`) или v1 (`docker-compose`) — на разных серверах по-разному.
 if docker compose version >/dev/null 2>&1; then
   compose() { docker compose -f "${COMPOSE_FILE}" "$@"; }
