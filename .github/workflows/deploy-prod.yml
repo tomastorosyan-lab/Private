@@ -34,10 +34,6 @@ jobs:
           envs: EMAIL_VERIFICATION_ENABLED,SMTP_HOST,SMTP_PORT,SMTP_USERNAME,SMTP_PASSWORD,SMTP_USE_TLS,SMTP_USE_SSL,SMTP_FROM_EMAIL,SMTP_FROM_NAME,PUBLIC_SITE_URL,TELEGRAM_BOT_TOKEN,TELEGRAM_BOT_USERNAME,TELEGRAM_WEBHOOK_SECRET,TELEGRAM_POLLING_ENABLED,TELEGRAM_POLLING_TIMEOUT_SECONDS
           script: |
             cd /opt/dis
-            git remote set-url origin https://github.com/tomastorosyan-lab/Private.git
-            git fetch origin main
-            git checkout main
-            git reset --hard origin/main
             python3 - <<'PY'
             import os
             from pathlib import Path
@@ -55,13 +51,6 @@ jobs:
                 "SMTP_FROM_NAME": os.environ["SMTP_FROM_NAME"],
                 "PUBLIC_SITE_URL": os.environ.get("PUBLIC_SITE_URL") or "https://abkhazhub.ru",
             }
-            telegram_keys = {
-                "TELEGRAM_BOT_TOKEN",
-                "TELEGRAM_BOT_USERNAME",
-                "TELEGRAM_WEBHOOK_SECRET",
-                "TELEGRAM_POLLING_ENABLED",
-                "TELEGRAM_POLLING_TIMEOUT_SECONDS",
-            }
             for key in (
                 "TELEGRAM_BOT_TOKEN",
                 "TELEGRAM_BOT_USERNAME",
@@ -70,16 +59,8 @@ jobs:
                 "TELEGRAM_POLLING_TIMEOUT_SECONDS",
             ):
                 value = os.environ.get(key)
-                # Telegram отключаем принудительно (сервер не может достучаться до api.telegram.org:443).
-                if value and key not in telegram_keys:
+                if value:
                     updates[key] = value
-
-            # Жёстко отключаем telegram в production-подключении.
-            updates["TELEGRAM_BOT_TOKEN"] = ""
-            updates["TELEGRAM_BOT_USERNAME"] = ""
-            updates["TELEGRAM_WEBHOOK_SECRET"] = ""
-            updates["TELEGRAM_POLLING_ENABLED"] = "false"
-            updates["TELEGRAM_POLLING_TIMEOUT_SECONDS"] = "0"
 
             lines = env_path.read_text().splitlines() if env_path.exists() else []
             seen = set()

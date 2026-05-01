@@ -23,7 +23,7 @@ fi
 echo "[deploy] Fetch latest changes"
 git fetch origin "${BRANCH}"
 git checkout "${BRANCH}"
-git reset --hard "origin/${BRANCH}"
+git pull --ff-only origin "${BRANCH}"
 
 echo "[deploy] Create pre-deploy backups"
 mkdir -p "${BACKUP_DIR}"
