@@ -70,10 +70,10 @@ docker compose -f docker-compose.prod.yml up -d --build
 docker compose -f docker-compose.prod.yml exec backend alembic upgrade head
 ```
 
-### Деплой на production (GitHub Actions, только вручную)
+### Деплой на production (GitHub Actions)
 
 В репозитории есть workflow: `.github/workflows/deploy-prod.yml`.
-Он **не запускается автоматически** на `push` — только когда вы вручную нажимаете **Run workflow** в GitHub Actions.
+Он **запускается автоматически** при каждом `git push` в ветку `main`, а также его можно запустить вручную через интерфейс GitHub Actions (кнопка **Run workflow**).
 
 После запуска workflow выполняет на сервере `/opt/dis/scripts/deploy-prod.sh`.
 
