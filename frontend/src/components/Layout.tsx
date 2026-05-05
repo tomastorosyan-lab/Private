@@ -449,21 +449,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                       </span>
                     )}
                   </Link>
-                  {pathname === '/register' ? (
-                    <Link
-                      href="/login"
-                      className="rounded-lg px-2 py-2 text-xs font-medium transition-colors sm:px-4 sm:text-sm bg-primary-dark text-white hover:bg-primary"
-                    >
-                      Войти
-                    </Link>
-                  ) : (
                   <Link
-                    href="/register"
+                    href="/login"
                     className="rounded-lg px-2 py-2 text-xs font-medium transition-colors sm:px-4 sm:text-sm bg-primary-dark text-white hover:bg-primary"
                   >
-                    Регистрация
+                    Авторизация
                   </Link>
-                  )}
                 </div>
               )}
             </div>
@@ -617,14 +608,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                       className="block rounded-lg px-3 py-2 text-base font-medium text-slate-800 hover:bg-slate-50 hover:text-primary"
                       onClick={() => setMobileMenuOpen(false)}
                     >
-                      Вход
-                    </Link>
-                    <Link
-                      href="/register"
-                      className="block rounded-lg px-3 py-2 text-base font-medium text-slate-800 hover:bg-slate-50 hover:text-primary"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      Регистрация
+                      Авторизация
                     </Link>
                   </>
                 )}

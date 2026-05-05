@@ -35,17 +35,8 @@ export default function LoginPage() {
       <div className="surface-card space-y-8 p-6 sm:p-8">
         <div className="text-center">
           <h2 className="text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">
-            Вход в систему
+            Авторизация
           </h2>
-          <p className="mt-2 text-sm text-slate-600">
-            Нет аккаунта?{' '}
-            <Link
-              href="/register"
-              className="font-medium text-primary hover:text-primary-dark"
-            >
-              Регистрация
-            </Link>
-          </p>
         </div>
         <form className="space-y-6" onSubmit={handleSubmit}>
           {error && (
@@ -97,13 +88,21 @@ export default function LoginPage() {
             </Link>
           </div>
 
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="flex w-full justify-center rounded-lg border border-transparent bg-primary-dark px-4 py-2.5 text-sm font-medium text-white shadow-surface transition-colors hover:bg-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50"
-          >
-            {isLoading ? 'Вход…' : 'Войти'}
-          </button>
+          <div className="space-y-3">
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="flex w-full justify-center rounded-lg border border-transparent bg-primary-dark px-4 py-2.5 text-sm font-medium text-white shadow-surface transition-colors hover:bg-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50"
+            >
+              {isLoading ? 'Вход…' : 'Войти'}
+            </button>
+            <Link
+              href="/register"
+              className="flex w-full justify-center rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+            >
+              Регистрация
+            </Link>
+          </div>
         </form>
       </div>
     </div>
