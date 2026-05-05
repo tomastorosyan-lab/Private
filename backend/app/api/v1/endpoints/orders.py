@@ -1,6 +1,7 @@
 """
 Эндпоинты для работы с заказами
 """
+from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, Query, Path
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -75,6 +76,8 @@ async def get_orders(
     status: Optional[OrderStatus] = Query(
         None, description="Фильтр по статусу (например pending — ожидают обработки)"
     ),
+    date_from: Optional[date] = Query(None, description="Дата начала периода, YYYY-MM-DD"),
+    date_to: Optional[date] = Query(None, description="Дата конца периода, YYYY-MM-DD"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -90,6 +93,8 @@ async def get_orders(
         user_id=current_user.id,
         current_user=current_user,
         status=status,
+        date_from=date_from,
+        date_to=date_to,
     )
 
 

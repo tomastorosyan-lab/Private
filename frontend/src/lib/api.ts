@@ -557,6 +557,8 @@ class ApiClient {
     limit?: number;
     /** например pending — ожидают обработки (для поставщика) */
     status?: string;
+    date_from?: string;
+    date_to?: string;
   }) {
     const queryParams = new URLSearchParams();
     if (params) {

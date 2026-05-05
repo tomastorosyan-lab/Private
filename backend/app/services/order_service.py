@@ -4,6 +4,7 @@
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from decimal import Decimal
+from datetime import date, datetime, time
 import logging
 from app.models.order import Order, OrderItem, OrderStatus
 from app.models.product import Product
@@ -196,6 +197,8 @@ class OrderService:
         user_id: int = None,
         current_user: User = None,
         status: Optional[OrderStatus] = None,
+        date_from: Optional[date] = None,
+        date_to: Optional[date] = None,
     ) -> List[Order]:
         """
         Получение списка заказов
@@ -222,6 +225,12 @@ class OrderService:
 
         if status is not None:
             query = query.filter(Order.status == status)
+
+        if date_from is not None:
+            query = query.filter(Order.created_at >= datetime.combine(date_from, time.min))
+
+        if date_to is not None:
+            query = query.filter(Order.created_at <= datetime.combine(date_to, time.max))
 
         return query.offset(skip).limit(limit).all()
     

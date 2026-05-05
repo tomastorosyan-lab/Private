@@ -53,6 +53,8 @@ export default function OrdersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   useEffect(() => {
     if (!authService.isAuthenticated()) {
@@ -64,17 +66,21 @@ export default function OrdersPage() {
     // Поставщики и заказчики могут видеть заказы
     // API автоматически фильтрует заказы по типу пользователя
     if (currentUser && (currentUser.user_type === 'supplier' || currentUser.user_type === 'customer' || currentUser.user_type === 'admin')) {
-      loadOrders();
+      loadOrders(dateFrom, dateTo);
     }
-  }, [router]);
+  }, [router, dateFrom, dateTo]);
 
-  const loadOrders = async () => {
+  const loadOrders = async (from = dateFrom, to = dateTo) => {
     try {
       setIsLoading(true);
       // API автоматически фильтрует заказы по типу пользователя
       // Для поставщиков - только входящие (supplier_id = current_user.id)
       // Для заказчиков - только их заказы (user_id = current_user.id)
-      const data = await api.getOrders({ limit: 100 });
+      const data = await api.getOrders({
+        limit: 100,
+        date_from: from || undefined,
+        date_to: to || undefined,
+      });
       setOrders(data);
     } catch (err: any) {
       setError(err.message || 'Ошибка загрузки заказов');
@@ -82,6 +88,8 @@ export default function OrdersPage() {
       setIsLoading(false);
     }
   };
+
+  const filteredOrders = orders.filter(order => statusFilter === 'all' || order.status === statusFilter);
 
   if (isLoading) {
     return (
@@ -113,37 +121,71 @@ export default function OrdersPage() {
         </div>
       )}
 
-      {/* Фильтр по статусам для истории заказов */}
+      {/* Фильтры для истории заказов */}
       <div className="bg-white shadow rounded-lg p-4 mb-6">
-        <div className="flex flex-wrap gap-2 items-center">
-          <span className="text-sm font-medium text-gray-700">Фильтр по статусу:</span>
-          <button
-            onClick={() => setStatusFilter('all')}
-            className={`px-3 py-1 rounded-md text-sm ${
-              statusFilter === 'all'
-                ? 'bg-primary-dark text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            Все
-          </button>
-          {Object.entries(statusLabels).map(([key, label]) => (
+        <div className="space-y-4">
+          <div className="flex flex-wrap gap-2 items-center">
+            <span className="text-sm font-medium text-gray-700">Фильтр по статусу:</span>
             <button
-              key={key}
-              onClick={() => setStatusFilter(key)}
+              onClick={() => setStatusFilter('all')}
               className={`px-3 py-1 rounded-md text-sm ${
-                statusFilter === key
+                statusFilter === 'all'
                   ? 'bg-primary-dark text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              {label}
+              Все
             </button>
-          ))}
+            {Object.entries(statusLabels).map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => setStatusFilter(key)}
+                className={`px-3 py-1 rounded-md text-sm ${
+                  statusFilter === key
+                    ? 'bg-primary-dark text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-3 items-end">
+            <label className="block">
+              <span className="block text-sm font-medium text-gray-700">Дата с</span>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="mt-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary-light"
+              />
+            </label>
+            <label className="block">
+              <span className="block text-sm font-medium text-gray-700">Дата по</span>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="mt-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary-light"
+              />
+            </label>
+            {(dateFrom || dateTo) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setDateFrom('');
+                  setDateTo('');
+                }}
+                className="rounded-md bg-gray-100 px-3 py-2 text-sm text-gray-700 hover:bg-gray-200"
+              >
+                Сбросить даты
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      {orders.filter(order => statusFilter === 'all' || order.status === statusFilter).length === 0 ? (
+      {filteredOrders.length === 0 ? (
         <div className="bg-white shadow rounded-lg p-12 text-center">
           <p className="text-gray-500 mb-4">
             {user?.user_type === 'supplier' 
@@ -188,9 +230,7 @@ export default function OrdersPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {orders
-                .filter(order => statusFilter === 'all' || order.status === statusFilter)
-                .map((order) => (
+              {filteredOrders.map((order) => (
                 <tr key={order.id}>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     #{order.id}
